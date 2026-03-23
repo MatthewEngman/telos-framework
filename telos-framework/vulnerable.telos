@@ -1,0 +1,23 @@
+# vulnerable.telos — intentional paradox (US cap + EU legal cap vs 100% flow)
+ontology:
+  variables:
+    - name: load_us
+      type: float
+      bounds: [0.0, 1.0]
+    - name: load_eu
+      type: float
+      bounds: [0.0, 1.0]
+  parameters:
+    - us_cap
+
+teleology:
+  direction: minimize
+  objective: "10*load_us + 20*load_eu"
+
+invariants:
+  - type: eq
+    expression: "load_us + load_eu - 1.0"
+  - type: ineq
+    expression: "us_cap - load_us"
+  - type: ineq
+    expression: "0.20 - load_eu"

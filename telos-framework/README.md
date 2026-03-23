@@ -15,7 +15,7 @@
 | **TIR compiler** | `telos/tir_compiler.py` | TIR → SciPy `SLSQP` |
 | **MILP compiler** | `telos/compiler.py` | `TelosSchema` → PuLP (pure math) |
 | **Canvas runtime** | `telos/runtime.py` | `TelosRuntime.tick` — memory, chained router → hardware, actuators |
-| **Actuators** | `telos/actuators/` | `BaseActuator`, `DockerActuator` (optional containers) |
+| **Actuators** | `telos/actuators/` | `DockerActuator`, `KubernetesActuator` (`replicas_*`), `FinTechActuator` (`shares_*`) |
 | **Canvas app** | `server.py` + `index.html` | FastAPI + WebSocket; thin shell around `TelosRuntime` |
 | **Manifests** | `*.telos` + `telos/parser.py` | YAML → validated `TelosSchema` dict (`TelosParser.load`) |
 | **Headless** | `headless.py` | `.telos` + parameter timeline + actuators (no UI) |
@@ -37,6 +37,7 @@ telos-framework/
 │   ├── compiler.py          # PuLP compiler for TelosSchema
 │   ├── parser.py            # .telos YAML loader
 │   ├── generator.py         # LLM -> .telos (TelosGenerator)
+│   ├── debugger.py          # LatentDebugger / Chaos Monkey
 │   ├── cli.py               # python -m telos
 │   ├── __main__.py
 │   ├── runtime.py           # Temporal OS loop + actuators
@@ -65,10 +66,24 @@ Python 3.10+ recommended (3.13 works in development).
 
 ## Install
 
+**From a clone (editable, registers the `telos` CLI):**
+
 ```bash
 cd telos-framework
+python -m pip install -e ".[all]"   # core + docker + kubernetes + FastAPI server
+# or minimal SDK only:
+python -m pip install -e .
+```
+
+**PyPI-style package name:** `telos-os` (see `pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`.
+
+**Legacy / dev requirements file:**
+
+```bash
 python -m pip install -r requirements.txt
 ```
+
+License: **MIT** (`LICENSE`).
 
 ## Run
 
@@ -108,7 +123,18 @@ python -m telos generate "Your architecture in English..." --out global_router.t
 
 # Headless loop (default tick key `main`; optional JSON parameters file)
 python -m telos run global_router.telos --interval 2 --no-docker
+
+# Same with explicit actuator (docker | k8s | fintech | none)
+python -m telos run hedge_fund.telos --actuator fintech --fintech-demo
+
+# Hub placeholder (writes .telos_modules/<name>.py)
+python -m telos install vendor/my-actuator
+
+# Monte Carlo adversarial check (exit 2 if infeasible context found)
+python -m telos test vulnerable.telos --iters 500
 ```
+
+After `pip install -e .`, you can run the **`telos`** command globally (same subcommands as `python -m telos`).
 
 **Backends:** `OPENAI_API_KEY` for OpenAI, or `TELOS_LLM_BACKEND=ollama` with `ollama serve` and `TELOS_OLLAMA_MODEL`. Override chat model with **`TELOS_GENERATOR_MODEL`** (default `gpt-4o`).
 

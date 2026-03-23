@@ -47,3 +47,6 @@ htmlcov/
 # Generated manifests (optional local experiments)
 generated.telos
 global_router.telos
+
+# CLI hub stub directory
+.telos_modules/

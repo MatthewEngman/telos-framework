@@ -11,6 +11,7 @@ This repository is **private** and contains the full framework under [`telos-fra
 | **MILP SDK** | Pydantic [`TelosSchema`](telos-framework/telos/models.py), PuLP compiler, [`TelosRuntime`](telos-framework/telos/runtime.py) (memory + chained solves), pluggable [`BaseActuator`](telos-framework/telos/actuators/base.py) |
 | **`.telos` manifests** | YAML on disk, loaded with [`TelosParser`](telos-framework/telos/parser.py), validated before run |
 | **LLM → `.telos`** | [`TelosGenerator`](telos-framework/telos/generator.py) + `python -m telos generate` (OpenAI or Ollama) |
+| **QA / fuzz** | [`LatentDebugger`](telos-framework/telos/debugger.py) + `python -m telos test` (Monte Carlo parameters, witness constraints) |
 | **Spatial canvas** | [`server.py`](telos-framework/server.py) + [`index.html`](telos-framework/index.html) — WebSocket IDE, router + hardware MILP |
 | **TIR + SciPy** | Classic [`TIRSchema`](telos-framework/telos/schema.py) + [`tir_compiler`](telos-framework/telos/tir_compiler.py) for continuous optimization ([`main.py`](telos-framework/main.py) demos) |
 
@@ -18,7 +19,8 @@ This repository is **private** and contains the full framework under [`telos-fra
 
 ```bash
 cd telos-framework
-python -m pip install -r requirements.txt
+python -m pip install -e ".[all]"
+# Global CLI: telos --help
 ```
 
 **Browser canvas** (open `http://127.0.0.1:8000` from that host, not `file://`):
@@ -38,6 +40,7 @@ python headless.py
 ```bash
 python -m telos generate "Describe routing, costs, caps, shards..." --out app.telos
 python -m telos run app.telos --no-docker
+python -m telos test vulnerable.telos --iters 500
 ```
 
 **TIR demos** (intent → LLM → SciPy, or hand-authored finance):

@@ -9,3 +9,4 @@ websockets
 pulp
 docker
 pyyaml
+# Optional (see pyproject.toml extras): kubernetes

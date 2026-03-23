@@ -1,0 +1,31 @@
+# hedge_fund.telos — demo portfolio (maximize yield under budget + cash + risk caps)
+ontology:
+  variables:
+    - name: shares_aapl
+      type: float
+      bounds: [0.0, 1000.0]
+    - name: shares_tsla
+      type: float
+      bounds: [0.0, 1000.0]
+    - name: cash_reserve
+      type: float
+      bounds: [0.0, 100000.0]
+  parameters:
+    - price_aapl
+    - price_tsla
+    - yield_aapl
+    - yield_tsla
+
+teleology:
+  direction: maximize
+  objective: "yield_aapl * shares_aapl + yield_tsla * shares_tsla"
+
+invariants:
+  - type: eq
+    expression: "(price_aapl * shares_aapl) + (price_tsla * shares_tsla) + cash_reserve - 100000.0"
+  - type: ineq
+    expression: "cash_reserve - 20000.0"
+  - type: ineq
+    expression: "50000.0 - (price_aapl * shares_aapl)"
+  - type: ineq
+    expression: "50000.0 - (price_tsla * shares_tsla)"

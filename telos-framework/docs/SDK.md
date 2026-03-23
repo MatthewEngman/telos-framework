@@ -15,12 +15,15 @@ Package version is exposed as `telos.__version__` (see `telos/__init__.py`).
 | `telos/runtime.py` | `TelosRuntime`: `dt` cap, router **memory** updates, ordered **`router` → `hardware`** compiles, `actuator.on_update(...)`. |
 | `telos/actuators/base.py` | `BaseActuator` — subclass for custom side effects. |
 | `telos/actuators/docker.py` | `DockerActuator` — optional Docker SDK; syncs `shards_*` to `nginx:alpine` containers. |
+| `telos/actuators/kubernetes.py` | `KubernetesActuator` — optional `kubernetes` client; scales Deployments from `replicas_<name>`. |
+| `telos/actuators/fintech.py` | `FinTechActuator` — demo logs for `shares_<TICKER>` targets (not a real broker). |
 | `telos/schema.py` | **TIR** models for LLM/CLI (`TIRSchema`, string variable lists, SymPy-oriented). |
 | `telos/tir_compiler.py` | **SciPy `SLSQP`** compiler for `TIRSchema` (continuous optimization). |
 | `telos/agent.py` | Natural language → TIR. |
 | `telos/parser.py` | **`TelosParser.load` / `loads`** — YAML file or string → validated `TelosSchema` dict. |
 | `telos/generator.py` | **`TelosGenerator`** — LLM intent → `.telos` file; re-validates with `TelosSchema`. |
-| `telos/cli.py` | **`python -m telos generate`** / **`run`** — CLI entry point. |
+| `telos/cli.py` | **`python -m telos generate`** / **`run`** / **`test`** — CLI entry point. |
+| `telos/debugger.py` | **`LatentDebugger`** — Monte Carlo over `ontology.parameters`; deletion-filter witness for infeasibility. |
 | `server.py` (repo root) | Thin **FastAPI** + WebSocket: JSON in, `TelosRuntime.tick`, JSON out to `index.html`. |
 | `headless.py` (repo root) | Example **daemon**: manifest + timeline of parameters, no UI. |
 
@@ -32,7 +35,7 @@ Two **compilers** coexist on purpose:
 ## Public imports
 
 ```python
-from telos import TelosRuntime, TelosParser, TelosGenerator, BaseActuator, DockerActuator, __version__
+from telos import TelosRuntime, TelosParser, TelosGenerator, LatentDebugger, BaseActuator, DockerActuator, __version__
 ```
 
 ### Prompt-to-physics (`TelosGenerator`)
@@ -47,6 +50,14 @@ TelosGenerator().generate(
 ```
 
 Uses **`OPENAI_API_KEY`** or local **Ollama** (same rules as `TelosAgent`). Generated YAML is checked immediately with **`TelosParser.loads`**.
+
+### Adversarial check (`LatentDebugger`)
+
+```bash
+python -m telos test manifest.telos --iters 1000
+```
+
+Random-samples declared **parameters** (caps, costs, etc.). On first infeasible PuLP outcome, prints a **small witness** subset of invariants (deletion filter; not a full commercial IIS). **Memory** `init` values are injected into the compile context so objectives like `(10 + heat_us)*load_us` still parse. Exit code **2** if a paradox is found, **0** if all samples feasible.
 
 Lower-level pieces:
 

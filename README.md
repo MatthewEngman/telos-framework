@@ -54,7 +54,7 @@ python main.py finance
 
 - **Full guide** (architecture table, env vars, TIR reference): [`telos-framework/README.md`](telos-framework/README.md)
 - **SDK API** (tick contract, actuators, security): [`telos-framework/docs/SDK.md`](telos-framework/docs/SDK.md)
-- **Design notes:** [OS v0.2 frontiers](telos-framework/docs/OS-V02-FRONTIERS.md) · [v0.3 temporal / heat](telos-framework/docs/OS-V03-TEMPORAL.md) · [v0.4 canvas](telos-framework/docs/OS-V04-CANVAS.md)
+- **Docs:** [SDK reference](telos-framework/docs/SDK.md)
 
 ## Requirements
 

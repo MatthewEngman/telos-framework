@@ -25,8 +25,6 @@
 
 **SDK overview (imports, tick contract, custom actuators):** [docs/SDK.md](docs/SDK.md).
 
-**OS design notes:** [docs/OS-V02-FRONTIERS.md](docs/OS-V02-FRONTIERS.md) · [docs/OS-V03-TEMPORAL.md](docs/OS-V03-TEMPORAL.md) · [docs/OS-V04-CANVAS.md](docs/OS-V04-CANVAS.md).
-
 ## Project layout
 
 ```
@@ -54,10 +52,7 @@ telos-framework/
 ├── server.py                # FastAPI + WebSocket (uses SDK)
 ├── index.html               # Spatial canvas UI
 ├── docs/
-│   ├── SDK.md               # Python SDK reference
-│   ├── OS-V02-FRONTIERS.md
-│   ├── OS-V03-TEMPORAL.md
-│   └── OS-V04-CANVAS.md
+│   └── SDK.md               # Python SDK reference
 ├── requirements.txt
 └── README.md
 ```

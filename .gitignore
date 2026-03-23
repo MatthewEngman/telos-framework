@@ -50,3 +50,8 @@ global_router.telos
 
 # CLI hub stub directory
 .telos_modules/
+
+# Local-only OS design drafts (not published; keep copies in your workspace)
+telos-framework/docs/OS-V02-FRONTIERS.md
+telos-framework/docs/OS-V03-TEMPORAL.md
+telos-framework/docs/OS-V04-CANVAS.md

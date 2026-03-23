@@ -1,4 +1,16 @@
-# Manual PyPI release. Add repository secret PYPI_API_TOKEN before running.
+# Publish telos-os to PyPI (manual).
+#
+# Recommended: PyPI "Trusted publishing" (OIDC) — no long-lived token in GitHub.
+#   1. Create https://pypi.org account (and optionally https://test.pypi.org).
+#   2. On PyPI: your account → Publishers → add GitHub workflow:
+#      repo: MatthewEngman/telos-framework, workflow file: publish.yml (this file).
+#      Optional: restrict to a GitHub Environment name if you create one and match it on PyPI.
+#   3. Bump version in telos-framework/pyproject.toml (and telos/__init__.py if you keep them in sync).
+#   4. Run this workflow from the Actions tab.
+#
+# Alternative: set repository secret PYPI_API_TOKEN and uncomment the `with: password:` block below
+# (and remove or ignore OIDC — the action prefers trusted publishing when configured on PyPI).
+
 name: Publish to PyPI
 
 on:
@@ -6,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -32,4 +45,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: telos-framework/dist/
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          # password: ${{ secrets.PYPI_API_TOKEN }}  # only if not using Trusted publishing

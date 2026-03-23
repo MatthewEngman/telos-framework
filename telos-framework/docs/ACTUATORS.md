@@ -71,13 +71,13 @@ Whatever variables the solved MILP produced for that tick, merged across router/
 No. Use `--actuator none` or `TelosRuntime()` with no attachments.
 
 **Are `.telos` files safe to download from the internet?**  
-Treat them like code: objectives and constraints are evaluated with restricted `eval`. Only load manifests you trust, or replace evaluation with a safer layer.
+Objectives and invariants are parsed by a **linear MILP engine**; memory updates use a **scalar** evaluator (`max`/`min` only). There is no Python `eval` on those paths, but manifests still define solver geometry—only load what you trust.
 
 **How do I test without real infrastructure?**  
 Use `--actuator none`, or install without `[docker]` / `[kubernetes]`; built-in actuators log simulation mode. Unit tests can attach a `BaseActuator` that records `on_update` calls.
 
 **Will `telos install` load my actuator from a hub?**  
-Not yet. `telos install` is a **local stub** (writes under `.telos_modules/`). For now, ship actuators as Python modules (your package or `pip install`).
+No. `telos install` is an **experimental stub** only (writes under `.telos_modules/`; no registry). Ship actuators as Python modules (your package or `pip install`).
 
 ## See also
 

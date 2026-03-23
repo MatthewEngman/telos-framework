@@ -38,6 +38,7 @@ ENV/
 Thumbs.db
 
 # Test / coverage
+.hypothesis/
 .pytest_cache/
 .coverage
 htmlcov/

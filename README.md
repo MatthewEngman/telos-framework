@@ -1,79 +1,150 @@
-# Telos
+# Telos OS
 
-**Telos** (Telos OS) is an experimental **Infrastructure-as-Physics** toolkit: you describe goals and constraints as math, and a solver plus optional **actuators** (for example Docker) turn that into behavior over time.
+**Telos OS** is a Python framework for **declarative optimization runtimes** using **`.telos` manifests**, **MILP** solving (PuLP / CBC), and **actuator-driven** execution after each solve.
 
-**First time here?** Open the beginner guide: **[telos-framework/docs/START_HERE.md](telos-framework/docs/START_HERE.md)** (glossary, first commands, no optimization background needed).
+*Infrastructure-as-Physics* — a tagline for the idea that infrastructure goals and constraints can be written as explicit math; the **primary** product surface is the **`.telos` + MILP** stack, not alternate representations.
 
-Source layout: the framework lives under [`telos-framework/`](telos-framework/).
+**First run in a few minutes:** install from [`telos-framework/`](telos-framework/), then `telos validate`, `telos run`, and `telos test` as below. Beginners: **[telos-framework/docs/START_HERE.md](telos-framework/docs/START_HERE.md)**.
 
-## What you get
+Source layout: the installable package and CLI live under [`telos-framework/`](telos-framework/).
 
-| Track | What it is |
-|-------|------------|
-| **MILP SDK** | Pydantic [`TelosSchema`](telos-framework/telos/models.py), PuLP compiler, [`TelosRuntime`](telos-framework/telos/runtime.py) (memory + chained solves), pluggable [`BaseActuator`](telos-framework/telos/actuators/base.py) |
-| **`.telos` manifests** | YAML on disk, loaded with [`TelosParser`](telos-framework/telos/parser.py), validated before run |
-| **LLM → `.telos`** | [`TelosGenerator`](telos-framework/telos/generator.py) + `python -m telos generate` (OpenAI or Ollama) |
-| **QA / fuzz** | [`LatentDebugger`](telos-framework/telos/debugger.py) + `python -m telos test` (Monte Carlo parameters, witness constraints) |
-| **Spatial canvas** | [`server.py`](telos-framework/server.py) + [`index.html`](telos-framework/index.html) — WebSocket IDE, router + hardware MILP |
-| **TIR + SciPy** | Classic [`TIRSchema`](telos-framework/telos/schema.py) + [`tir_compiler`](telos-framework/telos/tir_compiler.py) for continuous optimization ([`main.py`](telos-framework/main.py) demos) |
+---
 
-## Quick start
+## What it is
+
+| Piece | Role |
+|--------|------|
+| **`.telos` manifests** | YAML describing variables, parameters, objective, and constraints; loaded with [`TelosParser`](telos-framework/telos/parser.py) and validated as [`TelosSchema`](telos-framework/telos/models.py) |
+| **MILP runtime** | [`TelosRuntime.tick`](telos-framework/telos/runtime.py) — memory, optional router→hardware chain, PuLP compile/solve, merged **state** |
+| **Actuators** | Pluggable [`BaseActuator`](telos-framework/telos/actuators/base.py) hooks (Docker, Kubernetes, demo FinTech) — side effects **after** a successful solve |
+| **Debugger** | [`LatentDebugger`](telos-framework/telos/debugger.py) — Monte Carlo over parameters; witness-style hints when constraints cannot be satisfied |
+| **Generator (optional)** | [`TelosGenerator`](telos-framework/telos/generator.py) — natural language → draft `.telos` (OpenAI or Ollama) |
+
+**Expression safety:** MILP strings are parsed by **`telos.linear_milp`** under the invariant that **every accepted expression is linear in decision variables** (including **division only when the denominator is decision-free**). **Memory** updates use **`telos.memory_expr`**. There is **no Python `eval`** on those paths. **Corpus + Hypothesis fuzz tests** (see `telos-framework` dev install) harden the parser boundary in CI. Still treat **`.telos`**, **canvas JSON**, and **LLM-generated YAML** as **trusted configuration**. See [SECURITY.md](SECURITY.md) and [telos-framework/docs/SDK.md](telos-framework/docs/SDK.md).
+
+---
+
+## Quick install
 
 ```bash
 cd telos-framework
-python -m pip install -e ".[all]"
-# Global CLI: telos --help
+python -m pip install -e .
+# CLI: telos --help
 ```
 
-**Browser canvas** (open `http://127.0.0.1:8000` from that host, not `file://`):
+Use `python -m pip install -e ".[all]"` if you want Docker, Kubernetes, and the FastAPI canvas server extras.
+
+---
+
+## First successful run
+
+From `telos-framework/` (math only, no Docker):
 
 ```bash
-python server.py
+telos validate examples/router_minimal.telos
+telos validate examples/router_minimal.telos --strict
+telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
 ```
 
-**Headless demo** (example timeline + optional Docker):
+Press **Ctrl+C** to stop the loop. You should see `[MATH]` lines with variable values from the solver.
+
+---
+
+## First successful test (fuzz)
 
 ```bash
-python headless.py
+telos test vulnerable.telos --iters 500
 ```
 
-**CLI**:
+Exit code **2** means an infeasible parameter context was found (debugger reports a small witness). Exit **0** means all sampled contexts were feasible.
 
-```bash
-python -m telos generate "Describe routing, costs, caps, shards..." --out app.telos
-python -m telos run app.telos --no-docker
-python -m telos test vulnerable.telos --iters 500
+---
+
+## Core concepts
+
+- **Variable** — decided by the solver within bounds you declare (`float` or `int` for MILP).
+- **Parameter** — you supply each tick (JSON file, code, or CLI defaults); not optimized.
+- **Objective / invariants** — linear expressions over variables and parameters; **`eq`** means expression == 0, **`ineq`** means expression ≥ 0 (Telos convention).
+- **`tick`** — one solve cycle: update clock/memory if configured, run MILP(s), merge state, call actuators.
+
+More detail: [telos-framework/docs/START_HERE.md](telos-framework/docs/START_HERE.md).
+
+---
+
+## CLI overview
+
+| Command | Purpose |
+|---------|---------|
+| `telos run <file.telos>` | Load manifest, loop: solve each tick, optional actuators |
+| `telos validate <file.telos>` | Parse YAML + validate `TelosSchema`; `--strict` adds one PuLP probe (exit **4** if not optimal at probe context) |
+| `telos test <file.telos>` | Parameter fuzzing / paradox hunt (`--iters`) |
+| `telos generate "..." --out x.telos` | Optional LLM draft manifest (review before use) |
+| `telos install <id>` | **Experimental stub** — local placeholder only, not a package registry |
+
+---
+
+## SDK overview
+
+```python
+from pathlib import Path
+from telos import TelosRuntime, TelosParser, DockerActuator
+
+rt = TelosRuntime()
+rt.attach_actuator(DockerActuator())
+
+schema = TelosParser.load(Path("examples/router_minimal.telos"))
+result = rt.tick({"main": schema}, {"east_latency_weight": 5.0, "west_latency_weight": 1.0})
 ```
 
-**TIR demos** (intent → LLM → SciPy, or hand-authored finance):
+Full API: [telos-framework/docs/SDK.md](telos-framework/docs/SDK.md). Actuators: [telos-framework/docs/ACTUATORS.md](telos-framework/docs/ACTUATORS.md).
 
-```bash
-python main.py
-python main.py finance
-```
+---
+
+## Optional: natural language and canvas
+
+- **`telos generate`** — LLM-assisted `.telos`; requires `OPENAI_API_KEY` or local Ollama. Output is still **trusted-input** territory.
+- **Spatial canvas** — [`telos-framework/server.py`](telos-framework/server.py) + `index.html`: WebSocket UI around `TelosRuntime`. Run `python server.py`, open `http://127.0.0.1:8000` (same host; not `file://`).
+
+---
+
+## Experimental: continuous mode (TIR + SciPy)
+
+[`telos-framework/main.py`](telos-framework/main.py) demonstrates **TIR** (`telos/schema.py`, `telos/tir_compiler.py`) with **SciPy SLSQP** — useful for demos and fractional-variable experiments, **not** the same guarantees as the MILP `.telos` path (no mixed-integer certification). See [telos-framework/README.md](telos-framework/README.md) for a short pointer, not as a co-equal onboarding track.
+
+---
 
 ## Documentation
 
-- **Start here (beginners):** [`telos-framework/docs/START_HERE.md`](telos-framework/docs/START_HERE.md)
-- **Full framework guide** (architecture, env vars, TIR reference): [`telos-framework/README.md`](telos-framework/README.md)
-- **SDK API** (tick contract, security): [`telos-framework/docs/SDK.md`](telos-framework/docs/SDK.md)
-- **Actuators** (implement, naming, FAQ): [`telos-framework/docs/ACTUATORS.md`](telos-framework/docs/ACTUATORS.md)
-- **Example `.telos` set**: [`telos-framework/examples/README.md`](telos-framework/examples/README.md)
+| Doc | Audience |
+|-----|----------|
+| [telos-framework/docs/START_HERE.md](telos-framework/docs/START_HERE.md) | Glossary, first commands |
+| [telos-framework/README.md](telos-framework/README.md) | Layout, env vars, deeper reference |
+| [telos-framework/docs/SDK.md](telos-framework/docs/SDK.md) | Python API, `tick`, expression engines |
+| [telos-framework/docs/ACTUATORS.md](telos-framework/docs/ACTUATORS.md) | Actuator contracts |
+| [telos-framework/examples/README.md](telos-framework/examples/README.md) | Example manifests and one-liners |
+
+---
 
 ## Requirements
 
 - **Python** 3.10+ (3.13 OK in development)
-- **Optional:** Docker Desktop for [`DockerActuator`](telos-framework/telos/actuators/docker.py)
-- **Optional:** `OPENAI_API_KEY` or local **Ollama** for agent / `telos generate`
+- **Optional:** Docker Desktop for `DockerActuator`
+- **Optional:** `OPENAI_API_KEY` or **Ollama** for `telos generate` / agent demos
+
+---
 
 ## Security
 
-MILP objectives, constraints, and memory updates use restricted **`eval`**. Treat **canvas JSON**, **`.telos` files**, and **LLM output** as **trusted** input unless you add a hardened expression layer.
+**Do not** expose untrusted `.telos` or canvas payloads without policy controls. Parser overview and TIR (`sympify`) notes: [SECURITY.md](SECURITY.md).
+
+---
 
 ## License
 
-The framework is released under the [MIT License](telos-framework/LICENSE) ([`telos-framework/LICENSE`](telos-framework/LICENSE)).
+[MIT](telos-framework/LICENSE) — [`telos-framework/LICENSE`](telos-framework/LICENSE).
+
+---
 
 ## Contributing
 
-See [`telos-framework/CONTRIBUTING.md`](telos-framework/CONTRIBUTING.md) for environment setup and running tests. Issues and PRs welcome. Contributions are expected to be under the MIT license unless you state otherwise in the PR.
+[telos-framework/CONTRIBUTING.md](telos-framework/CONTRIBUTING.md) — tests, CI, PR expectations.

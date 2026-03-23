@@ -1,3 +1,10 @@
+"""
+Optional demos for **experimental continuous-mode TIR** (``TelosAgent`` → ``TIRSchema`` → SciPy).
+
+Canonical Telos OS usage is ``.telos`` MILP manifests and ``telos run`` / ``TelosParser``;
+see ``docs/START_HERE.md``.
+"""
+
 import os
 import sys
 

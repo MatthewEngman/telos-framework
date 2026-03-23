@@ -1,3 +1,10 @@
+"""
+**Experimental — continuous mode.** Natural language → ``TIRSchema`` (OpenAI, Ollama, mock).
+
+For the primary workflow, use ``TelosGenerator`` (intent → ``.telos`` MILP) or author
+manifests by hand; this module targets the legacy/demo TIR + SciPy path.
+"""
+
 import json
 import os
 import re

@@ -2,173 +2,168 @@
 
 [![CI](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml)
 
-**New to Telos?** Read **[docs/START_HERE.md](docs/START_HERE.md)** first—a plain-language glossary, your first commands, and how `.telos` files map to the solver. No optimization background required.
+**Telos OS** is a Python framework for **declarative optimization runtimes**: **`.telos` YAML manifests**, **MILP** solving with PuLP/CBC, a temporal **`TelosRuntime`** (memory, chained matrices), and optional **actuators**. *Infrastructure-as-Physics* is a **tagline** for describing goals and constraints as math—not a second product line.
+
+**New here?** **[docs/START_HERE.md](docs/START_HERE.md)** — glossary, `telos validate` / `telos run` / `telos test`, how to read a manifest.
 
 ---
 
-**Telos** is an experimental stack for **teleological specification**: you name **decision variables**, say what you want to **optimize**, and list **rules** (constraints) that must stay true. A **solver** picks numeric values for the variables. Optional **actuators** then use those numbers to affect the real world (Docker, Kubernetes) or demo logs.
+## Canonical path: `.telos` + MILP + runtime
 
-Two technical representations coexist in this repo (pick one learning path at first):
+1. Author or generate a **`.telos`** file (YAML → `TelosSchema`).
+2. **`telos validate`** / **`telos run`** / **`telos test`** — or embed **`TelosParser`** + **`TelosRuntime`** in Python.
+3. Optionally attach **actuators** so numeric solutions drive Docker, Kubernetes, or custom side effects.
 
-1. **TIR** — JSON-style schema for **continuous** problems (variables can be fractional; no integer “count” guarantees). Often produced by an LLM, solved with **SymPy + SciPy** (`main.py` demos).
-2. **MILP canvas (`.telos` YAML)** — Pydantic **`TelosSchema`**: supports **integer** variables (e.g. replica counts) and **linear** math. Solved with **PuLP** and **CBC**. This is the path behind **`telos run`**, **`examples/`**, and the browser canvas.
+**Expression handling:** objectives and invariants use **`telos.linear_milp`**—**every accepted expression is linear in decision variables**; `/` only when the denominator is decision-free. Memory **`update`** strings use **`telos.memory_expr`**. Checked-in manifests are covered by **corpus tests**; dev CI runs **Hypothesis fuzz** on the parsers (bounded time per sample). Still treat **`.telos`**, **canvas JSON**, and **LLM output** as **trusted configuration**. See [docs/SDK.md](docs/SDK.md) and [../SECURITY.md](../SECURITY.md).
 
-## Architecture
+---
+
+## Architecture (MILP-first)
 
 | Layer | Module | Role |
 |--------|--------|------|
-| **TIR schema** | `telos/schema.py` | `TIRSchema`, `Ontology` (string variables + bounds), `Teleology`, `Invariant` |
-| **MILP schema** | `telos/models.py` | `TelosSchema`, typed `Variable` / `Memory` for canvas JSON |
-| **Agent** | `telos/agent.py` | Natural language → TIR (OpenAI, Ollama, mock) |
-| **TIR compiler** | `telos/tir_compiler.py` | TIR → SciPy `SLSQP` |
-| **MILP compiler** | `telos/compiler.py` | `TelosSchema` → PuLP (pure math) |
-| **Canvas runtime** | `telos/runtime.py` | `TelosRuntime.tick` — memory, chained router → hardware, actuators |
-| **Actuators** | `telos/actuators/` | `DockerActuator`, `KubernetesActuator` (`replicas_*`), `FinTechActuator` (`shares_*`) |
-| **Canvas app** | `server.py` + `index.html` | FastAPI + WebSocket; thin shell around `TelosRuntime` |
-| **Manifests** | `*.telos` + `telos/parser.py` | YAML → validated `TelosSchema` dict (`TelosParser.load`) |
-| **Headless** | `headless.py` | `.telos` + parameter timeline + actuators (no UI) |
-| **Demos** | `main.py` | CLI: intent → TIR → SciPy |
+| **Manifests** | `telos/parser.py` | `TelosParser.load` / `loads` — YAML → validated dict |
+| **MILP schema** | `telos/models.py` | `TelosSchema`, `Variable`, `Memory`, etc. |
+| **MILP compiler** | `telos/compiler.py` | PuLP `TelosCompiler.compile` |
+| **Linear expressions** | `telos/linear_milp.py` | Safe parser for objectives / invariants |
+| **Memory expressions** | `telos/memory_expr.py` | Safe scalar `update` evaluator (`max`/`min`) |
+| **Runtime** | `telos/runtime.py` | `TelosRuntime.tick` — memory, router→hardware order, actuators |
+| **Actuators** | `telos/actuators/` | `DockerActuator`, `KubernetesActuator`, `FinTechActuator` |
+| **Debugger** | `telos/debugger.py` | `LatentDebugger` — Monte Carlo parameters |
+| **Generator (optional)** | `telos/generator.py` | LLM → draft `.telos` |
+| **CLI** | `telos/cli.py` | `telos run`, `validate`, `test`, `generate`; `install` is stub |
 
-| Doc | Audience |
-|-----|----------|
-| [docs/START_HERE.md](docs/START_HERE.md) | **Beginners** — glossary, first 15 minutes, how to read `.telos` |
-| [docs/SDK.md](docs/SDK.md) | Python API, `tick` contract, module map |
-| [docs/ACTUATORS.md](docs/ACTUATORS.md) | Side effects after each solve; implement your own actuator |
-| [examples/README.md](examples/README.md) | Copy-paste `telos run` examples across domains |
+### Experimental — continuous mode (TIR)
+
+| Module | Role |
+|--------|------|
+| `telos/schema.py` | `TIRSchema` — string variable lists, SymPy-oriented (fractional variables) |
+| `telos/tir_compiler.py` | SciPy `SLSQP` for `TIRSchema` |
+| `telos/agent.py` | Natural language → **TIR** (not the primary `.telos` workflow) |
+| `main.py` | Demos: intent → TIR → SciPy, or hand-authored finance TIR |
+
+TIR does **not** provide mixed-integer guarantees. Prefer **`.telos` + PuLP** for production-style discrete decisions.
+
+---
 
 ## Project layout
 
 ```
 telos-framework/
 ├── telos/
-│   ├── __init__.py          # TelosRuntime, actuators, __version__
-│   ├── schema.py            # TIR (CLI / agent)
-│   ├── models.py            # MILP TelosSchema (canvas)
-│   ├── tir_compiler.py      # SciPy compiler for TIR
-│   ├── compiler.py          # PuLP compiler for TelosSchema
-│   ├── parser.py            # .telos YAML loader
-│   ├── generator.py         # LLM -> .telos (TelosGenerator)
-│   ├── debugger.py          # LatentDebugger / Chaos Monkey
-│   ├── cli.py               # python -m telos
-│   ├── __main__.py
-│   ├── runtime.py           # Temporal OS loop + actuators
-│   ├── agent.py
+│   ├── __init__.py          # exports; package story
+│   ├── linear_milp.py       # safe linear parser (objectives / invariants)
+│   ├── memory_expr.py       # safe scalar memory updates
+│   ├── models.py            # MILP TelosSchema
+│   ├── compiler.py          # PuLP
+│   ├── parser.py            # .telos YAML
+│   ├── runtime.py           # TelosRuntime
+│   ├── debugger.py
+│   ├── generator.py
+│   ├── cli.py
+│   ├── schema.py            # experimental TIR models
+│   ├── tir_compiler.py      # experimental SciPy path
+│   ├── agent.py             # experimental NL → TIR
 │   └── actuators/
-│       ├── __init__.py
-│       ├── base.py
-│       ├── docker.py
-│       ├── kubernetes.py
-│       └── fintech.py
-├── main.py                  # CLI demos (TIR + SciPy)
-├── headless.py              # Daemon: infrastructure.telos + timeline
-├── infrastructure.telos     # Example combined MILP manifest (YAML)
-├── hedge_fund.telos         # Portfolio demo (fintech actuator)
-├── examples/                # More domain-diverse .telos + params/*.json
-├── server.py                # FastAPI + WebSocket (uses SDK)
-├── index.html               # Spatial canvas UI
+├── main.py                  # TIR / SciPy demos (experimental)
+├── headless.py              # .telos + timeline (MILP)
+├── server.py                # optional canvas (FastAPI + WebSocket)
+├── examples/                # MILP .telos + params/
 ├── docs/
-│   ├── START_HERE.md        # Beginner on-ramp (read this first)
-│   ├── SDK.md               # Python SDK reference
-│   └── ACTUATORS.md         # Actuator guide + FAQ
-├── requirements.txt
-└── README.md
+│   ├── START_HERE.md
+│   ├── SDK.md
+│   └── ACTUATORS.md
+└── pyproject.toml
 ```
+
+| Doc | Audience |
+|-----|----------|
+| [docs/START_HERE.md](docs/START_HERE.md) | Beginners |
+| [docs/SDK.md](docs/SDK.md) | Python API, security |
+| [docs/ACTUATORS.md](docs/ACTUATORS.md) | Actuator guide |
+| [examples/README.md](examples/README.md) | Learning progression + CLI |
+
+---
 
 ## Requirements
 
-Python 3.10+ recommended (3.13 works in development).
+Python **3.10+** (3.13 works in development).
 
 ## Install
 
-**From a clone (editable, registers the `telos` CLI):**
+**Editable (registers `telos` CLI):**
 
 ```bash
 cd telos-framework
-python -m pip install -e ".[all]"   # core + docker + kubernetes + FastAPI server
-# or minimal SDK only:
+python -m pip install -e ".[all]"   # + docker, k8s, server
+# or minimal MILP SDK:
 python -m pip install -e .
 ```
 
-- **Minimal install** (`pip install -e .`) is enough for **`telos run`** with `--actuator none` and all **examples** that only need math.  
-- **`[all]`** adds optional integrations (Docker SDK, Kubernetes client, FastAPI server stack).
+**PyPI:** `pip install telos-os` — extras `[docker]`, `[kubernetes]`, `[server]`, `[all]`.
 
-**From PyPI (published package):** `pip install telos-os` (same extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`). See `pyproject.toml`.
-
-**Legacy / dev requirements file:**
-
-```bash
-python -m pip install -r requirements.txt
-```
+**Legacy:** `python -m pip install -r requirements.txt`
 
 License: **MIT** (`LICENSE`).
 
-## Run
+---
 
-**Default demo** — load-balancing-style intent → agent → TIR → SciPy:
-
-```bash
-python main.py
-```
-
-**Finance demo** — hand-authored TIR (no LLM):
+## First commands (MILP)
 
 ```bash
-python main.py finance
+telos validate examples/router_minimal.telos
+telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
+telos test vulnerable.telos --iters 500
 ```
 
-## Telos OS canvas — `server.py` + `index.html`
+Optional LLM draft (review output before running):
 
-The **spatial canvas** builds `{ router, hardware }` plus `parameters` and streams them over WebSocket (~20 Hz). The **heavy logic** lives in **`TelosRuntime`** inside `telos/runtime.py`; **`server.py`** only handles HTTP/WebSocket and JSON.
+```bash
+telos generate "Describe routing, costs, caps..." --out app.telos
+```
 
-1. **Router MILP:** `load_<id>`, flow conservation, caps, **heat** memory, costed objective.
-2. **Hardware MILP:** integer `shards_<id>` vs routed load.
-3. **Optional:** `DockerActuator` reconciles `shards_*` with real **Docker** containers (`nginx:alpine`).
+**Experimental stub** (not a registry):
+
+```bash
+telos install vendor/my-actuator
+```
+
+Backends for `generate` / agent: `OPENAI_API_KEY`, or `TELOS_LLM_BACKEND=ollama` with `ollama serve`. See **Environment variables** below.
+
+---
+
+## Optional canvas
 
 ```bash
 python server.py
 ```
 
-Open **`http://127.0.0.1:8000`** from the same origin (not `file://`). If port **8000** is busy: `TELOS_PORT` (PowerShell: `$env:TELOS_PORT=8010`). Optional `TELOS_RELOAD=1` (reload can be flaky with WebSockets on Windows).
+Open **`http://127.0.0.1:8000`** (not `file://`). Port: `TELOS_PORT`. `TELOS_RELOAD=1` for uvicorn reload (WebSockets can be flaky on Windows).
 
-## CLI — `python -m telos`
+---
 
-From the **`telos-framework`** directory (so the `telos` package is on the path):
-
-```bash
-# Natural language -> validated .telos (OpenAI or Ollama; same env vars as TelosAgent)
-python -m telos generate "Your architecture in English..." --out global_router.telos
-
-# Headless loop (default tick key `main`; optional JSON parameters file)
-python -m telos run global_router.telos --interval 2 --no-docker
-
-# Examples: params match ontology.parameters (see examples/README.md)
-python -m telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
-
-# Same with explicit actuator (docker | k8s | fintech | none)
-python -m telos run hedge_fund.telos --actuator fintech --fintech-demo
-
-# Install stub (writes .telos_modules/<name>.py only — no remote registry)
-python -m telos install vendor/my-actuator
-
-# Monte Carlo adversarial check (exit 2 if infeasible context found)
-python -m telos test vulnerable.telos --iters 500
-```
-
-After `pip install -e .`, you can run the **`telos`** command globally (same subcommands as `python -m telos`).
-
-**Backends:** `OPENAI_API_KEY` for OpenAI, or `TELOS_LLM_BACKEND=ollama` with `ollama serve` and `TELOS_OLLAMA_MODEL`. Override chat model with **`TELOS_GENERATOR_MODEL`** (default `gpt-4o`).
-
-## Headless — `.telos` + `headless.py`
-
-**Infrastructure-as-Physics:** define one combined MILP (loads, shards, memory, constraints) in **`infrastructure.telos`**, load with **`TelosParser`**, and call **`TelosRuntime.tick({"main": schema}, parameters)`**. No browser.
+## Headless MILP demo
 
 ```bash
 python headless.py
 ```
 
-Uses **`DockerActuator`** if Docker is available (see [docs/SDK.md](docs/SDK.md)). The script sleeps **3 seconds** between timeline steps so container reconciliation is visible.
+Loads **`infrastructure.telos`** and a parameter timeline; uses **`DockerActuator`** when Docker is available.
 
-## Using the SDK in code
+---
+
+## Experimental TIR demos (`main.py`)
+
+```bash
+python main.py          # intent → agent → TIR → SciPy (optional LLM)
+python main.py finance  # hand-authored TIR, no LLM
+```
+
+These illustrate the **continuous** track only.
+
+---
+
+## SDK usage (MILP)
 
 ```python
 from pathlib import Path
@@ -177,45 +172,38 @@ from telos import TelosRuntime, TelosParser, DockerActuator
 rt = TelosRuntime()
 rt.attach_actuator(DockerActuator())
 
-# Canvas-style chained matrices
 result = rt.tick(
     {"router": router_dict, "hardware": hardware_dict},
     {"cap_s1": 1.0, "cost_s1": 20.0},
 )
 
-# Or a single combined matrix from a .telos file
 schema = TelosParser.load(Path("infrastructure.telos"))
 result = rt.tick({"main": schema}, {"us_cap": 1.0, "eu_cost": 20.0})
 ```
 
-See [docs/SDK.md](docs/SDK.md) for the full contract and security notes.
+See [docs/SDK.md](docs/SDK.md) for the full `tick` contract.
 
-## Configuring the agent
+---
 
-`TelosAgent` picks a backend from **`TELOS_LLM_BACKEND`** (if set) or the constructor; otherwise **`auto`**:
+## Configuring the agent (TIR / experimental)
 
-| Order (`auto`) | Condition |
-|----------------|-----------|
-| OpenAI | `OPENAI_API_KEY` is set |
-| Ollama | Ollama is reachable **and** the configured model is installed |
-| Mock | Fallback (prints a warning) |
-
-### Environment variables
+`TelosAgent` backend order when `auto`: OpenAI if `OPENAI_API_KEY`, else Ollama if reachable, else mock.
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENAI_API_KEY` | OpenAI API key |
+| `OPENAI_API_KEY` | OpenAI |
 | `TELOS_LLM_BACKEND` | `auto` · `openai` · `ollama` · `mock` |
-| `OLLAMA_HOST` | Ollama base URL (default `http://127.0.0.1:11434`) |
-| `TELOS_OLLAMA_MODEL` | Model name (default `llama3.2`) |
-| `TELOS_PORT` | Canvas HTTP port (default `8000`) |
-| `TELOS_RELOAD` | `1` / `true` for uvicorn autoreload |
+| `OLLAMA_HOST` | Ollama base URL |
+| `TELOS_OLLAMA_MODEL` | Model name |
+| `TELOS_GENERATOR_MODEL` | Chat model for `TelosGenerator` (default `gpt-4o`) |
+| `TELOS_PORT` | Canvas port |
+| `TELOS_RELOAD` | `1` for uvicorn autoreload |
 
-**Ollama:** run `ollama serve`, then `ollama pull <model>` for `TELOS_OLLAMA_MODEL`.
+---
 
-## TIR shape (SymPy / SciPy reference)
+## TIR JSON shape (reference only — experimental)
 
-Expressions must be valid for **SymPy** (`sympify`). Invariants: **`eq`** → expression == 0, **`ineq`** → expression ≥ 0.
+Expressions must be valid for SymPy (`sympify`). **`eq`** → == 0, **`ineq`** → ≥ 0.
 
 ```json
 {
@@ -234,18 +222,16 @@ Expressions must be valid for **SymPy** (`sympify`). Invariants: **`eq`** → ex
 }
 ```
 
-Build in code with `TIRSchema` / nested models (`telos/schema.py`, `main.py`). Optional **`ontology.parameters`** name symbols filled from runtime context.
+---
 
 ## Limitations
 
-- **TIR track:** continuous `SLSQP` only; no mixed-integer guarantees.
-- **MILP track:** CBC via PuLP; `eval` on objectives/constraints — **trusted input only** unless you add a safe evaluator.
-- Prototype “executable matrix” is a **dict of numbers**, not a binary tensor format.
+- **MILP:** CBC via PuLP; linear expression parser for manifest strings.
+- **TIR:** continuous `SLSQP` only; experimental / demo-oriented.
+- Executable “matrix” is a **dict of numbers**, not a binary tensor format.
 
-## License
-
-[MIT](LICENSE) — see `LICENSE` in this directory.
+---
 
 ## Contributing
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, **pytest**, and PR expectations. Issues and PRs welcome: safer parsing, extra solvers, actuator plugins, PyPI polish, or richer matrix graphs. By contributing, you agree your contributions are under the same terms as this project (MIT).
+[CONTRIBUTING.md](CONTRIBUTING.md) — pytest, CI, PRs.

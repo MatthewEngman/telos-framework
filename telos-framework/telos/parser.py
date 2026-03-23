@@ -1,4 +1,4 @@
-"""Load and validate `.telos` YAML manifests into `TelosSchema` dicts."""
+"""Load and validate ``.telos`` YAML into ``TelosSchema`` dicts (canonical MILP manifests)."""
 
 from __future__ import annotations
 

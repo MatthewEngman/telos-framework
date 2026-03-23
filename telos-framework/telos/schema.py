@@ -1,5 +1,14 @@
+"""
+**Experimental — continuous mode (TIR).** JSON-oriented schemas for fractional
+variables and SciPy ``SLSQP``, often paired with ``TelosAgent`` (natural language → TIR).
+
+This is **not** the canonical MILP path. For production-style workflows use
+``TelosSchema`` / ``.telos`` manifests, ``TelosParser``, and ``telos run``.
+"""
+
+from typing import List, Literal, Optional, Tuple
+
 from pydantic import BaseModel, Field
-from typing import List, Literal, Tuple, Optional
 
 
 class Ontology(BaseModel):

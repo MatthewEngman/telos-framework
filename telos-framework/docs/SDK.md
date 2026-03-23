@@ -1,43 +1,57 @@
-# Telos SDK (canvas / MILP path)
+# Telos SDK (MILP runtime)
 
-**If you are new to Telos or to optimization**, read **[START_HERE.md](./START_HERE.md)** first. It defines **MILP**, **variables vs parameters**, **`.telos` manifests**, and **`tick`** in everyday language.
+**If you are new**, read **[START_HERE.md](./START_HERE.md)** first (variables vs parameters, `.telos`, `tick`).
 
----
+This document describes the **installable** `telos` package: **parser**, **MILP models/compiler**, **runtime**, **debugger**, **generator**, and **actuators**. The **canonical** integration surface is **`TelosParser` + `TelosRuntime` + `.telos` manifests**.
 
-This document describes the **installable Python package** under `telos/`: validated schemas, the PuLP compiler, the temporal runtime, and pluggable **actuators**. It sits alongside the older **TIR + SciPy** stack used by `main.py` (see [README.md](../README.md)).
+- **Actuators:** [ACTUATORS.md](./ACTUATORS.md)  
+- **Examples:** [examples/README.md](../examples/README.md)
 
-- **Actuators (conventions, FAQ, custom code):** [ACTUATORS.md](./ACTUATORS.md)  
-- **Example manifests + CLI one-liners:** [examples/README.md](../examples/README.md)
+## Expression engines (MILP vs memory)
+
+**Design rule:** every accepted MILP expression must be **classifiable as linear with respect to decision variables** (ontology variables mapped to PuLP symbols). That invariant is what blocks feature creep into non-linear or `eval`-style holes.
+
+**Objectives and invariants** use **`telos.linear_milp`**: numbers, identifiers, `+`, `-`, `*`, `/`, parentheses. Multiplication may not combine two decision-bearing subexpressions. **Division** is allowed only when the **denominator does not depend on decision variables** (it is a constant multiplier at compile time); **zero** / near-zero denominators are rejected. Invalid numeric literals (e.g. `0..`) are parse errors, not process crashes. **Parenthesis nesting** is capped at **`telos.expr_limits.DEFAULT_MAX_PAREN_NESTING_DEPTH`** (64).
+
+**Memory `update`** strings use **`telos.memory_expr`**: scalar floats, `+`, `-`, `*` (no `/` until a manifest needs it), parentheses, and whitelisted **`max`** / **`min`**. No `eval`. Uses the **same nesting cap** (grouping and function-call parens share one counter).
+
+Treat manifests and canvas JSON as **trusted configuration**; see [../../SECURITY.md](../../SECURITY.md).
 
 ## Version
 
-Package version is exposed as `telos.__version__` (see `telos/__init__.py`).
+`telos.__version__` — see `telos/__init__.py`.
 
-## Module map
+## Module map (MILP-first)
 
 | Module | Role |
 |--------|------|
-| `telos/models.py` | Pydantic **MILP canvas** models: `TelosSchema`, `Variable`, `Memory`, `Ontology`, `Teleology`, `Invariant`. |
-| `telos/compiler.py` | **PuLP** `TelosCompiler.compile(schema, context)` — one-shot MILP; no clock, no I/O. |
-| `telos/runtime.py` | `TelosRuntime`: `dt` cap, router **memory** updates, ordered **`router` → `hardware`** compiles, `actuator.on_update(...)`. |
-| `telos/actuators/base.py` | `BaseActuator` — subclass for custom side effects. |
-| `telos/actuators/docker.py` | `DockerActuator` — optional Docker SDK; syncs `shards_*` to `nginx:alpine` containers. |
-| `telos/actuators/kubernetes.py` | `KubernetesActuator` — optional `kubernetes` client; scales Deployments from `replicas_<name>`. |
-| `telos/actuators/fintech.py` | `FinTechActuator` — demo logs for `shares_<TICKER>` targets (not a real broker). |
-| `telos/schema.py` | **TIR** models for LLM/CLI (`TIRSchema`, string variable lists, SymPy-oriented). |
-| `telos/tir_compiler.py` | **SciPy `SLSQP`** compiler for `TIRSchema` (continuous optimization). |
-| `telos/agent.py` | Natural language → TIR. |
-| `telos/parser.py` | **`TelosParser.load` / `loads`** — YAML file or string → validated `TelosSchema` dict. |
-| `telos/generator.py` | **`TelosGenerator`** — LLM intent → `.telos` file; re-validates with `TelosSchema`. |
-| `telos/cli.py` | **`python -m telos generate`** / **`run`** / **`test`** — CLI entry point. |
-| `telos/debugger.py` | **`LatentDebugger`** — Monte Carlo over `ontology.parameters`; deletion-filter witness for infeasibility. |
-| `server.py` (repo root) | Thin **FastAPI** + WebSocket: JSON in, `TelosRuntime.tick`, JSON out to `index.html`. |
-| `headless.py` (repo root) | Example **daemon**: manifest + timeline of parameters, no UI. |
+| `telos/models.py` | `TelosSchema`, `Variable`, `Memory`, etc. |
+| `telos/compiler.py` | PuLP `TelosCompiler.compile(schema, context)` |
+| `telos/expr_limits.py` | Internal caps (e.g. max parenthesis nesting depth) |
+| `telos/linear_milp.py` | Safe linear expression parser for objectives / invariants |
+| `telos/memory_expr.py` | Safe scalar evaluator for memory `update` strings |
+| `telos/runtime.py` | `TelosRuntime.tick` — memory, router→hardware order, actuators |
+| `telos/actuators/base.py` | `BaseActuator` |
+| `telos/actuators/docker.py` | `DockerActuator` — `shards_*` |
+| `telos/actuators/kubernetes.py` | `KubernetesActuator` — `replicas_*` |
+| `telos/actuators/fintech.py` | `FinTechActuator` — `shares_*` (demo) |
+| `telos/parser.py` | `TelosParser.load` / `loads` |
+| `telos/generator.py` | `TelosGenerator` — optional LLM → `.telos` |
+| `telos/debugger.py` | `LatentDebugger` — Monte Carlo parameters |
+| `telos/cli.py` | `telos run`, `validate`, `test`, `generate` |
+| `server.py` (repo root) | Optional FastAPI + WebSocket canvas |
+| `headless.py` (repo root) | Example daemon: `.telos` + timeline |
 
-Two **compilers** coexist on purpose:
+### Experimental — continuous mode (TIR)
 
-- **`telos.tir_compiler.TelosCompiler`** — continuous TIR (`main.py`, demos).
-- **`telos.compiler.TelosCompiler`** — MILP `TelosSchema` (canvas / SDK).
+| Module | Role |
+|--------|------|
+| `telos/schema.py` | `TIRSchema` for SciPy-oriented demos |
+| `telos/tir_compiler.py` | SciPy `SLSQP` compiler for TIR |
+| `telos/agent.py` | Natural language → TIR (not the primary `.telos` path) |
+| `telos/experimental/tir.py` | Re-exports TIR + `TelosAgent` + SciPy `TelosCompiler` (namespaced) |
+
+There are two compilers by design: **`telos.compiler.TelosCompiler`** (MILP, canonical) and **`telos.tir_compiler.TelosCompiler`** (TIR/SciPy, experimental).
 
 ## Public imports
 
@@ -45,7 +59,7 @@ Two **compilers** coexist on purpose:
 from telos import TelosRuntime, TelosParser, TelosGenerator, LatentDebugger, BaseActuator, DockerActuator, __version__
 ```
 
-### Prompt-to-physics (`TelosGenerator`)
+### Optional: draft manifest (`TelosGenerator`)
 
 ```python
 from telos import TelosGenerator
@@ -56,58 +70,58 @@ TelosGenerator().generate(
 )
 ```
 
-Uses **`OPENAI_API_KEY`** or local **Ollama** (same rules as `TelosAgent`). Generated YAML is checked immediately with **`TelosParser.loads`**.
+Uses `OPENAI_API_KEY` or Ollama (same rules as `TelosAgent`). Output is re-validated with `TelosParser.loads`. **Treat as trusted input** after review.
 
-### Adversarial check (`LatentDebugger`)
+### Debugger CLI
 
 ```bash
-python -m telos test manifest.telos --iters 1000
+telos test manifest.telos --iters 1000
 ```
 
-Random-samples declared **parameters** (caps, costs, etc.). On first infeasible PuLP outcome, prints a **small witness** subset of invariants (deletion filter; not a full commercial IIS). **Memory** `init` values are injected into the compile context so objectives like `(10 + heat_us)*load_us` still parse. Exit code **2** if a paradox is found, **0** if all samples feasible.
-
-Lower-level pieces:
+Random-samples declared **parameters**. On first infeasible outcome, prints a **witness** subset of invariants (deletion filter). Memory `init` values are injected into the compile context. Exit **2** if a paradox is found, **0** if all samples feasible.
 
 ```python
 from telos.models import TelosSchema
 from telos.compiler import TelosCompiler as MilpCompiler
 ```
 
-## `.telos` manifests (YAML)
+### Validate CLI
 
-Declarative MILP geometry lives in YAML on disk. **`TelosParser.load("path/to/file.telos")`** returns a **dict** that matches `TelosSchema` (same shape as the canvas JSON). Feed it into `tick` under any key name when you are **not** using the canvas split:
+```bash
+telos validate manifest.telos
+```
+
+Exit **0** if YAML parses and `TelosSchema` validates; **1** on failure. With **`--strict`**, also run one solve: **1** on compile/parse error, **4** if the probe context is infeasible or not optimal.
+
+## `.telos` manifests (YAML)
 
 ```python
 schema_dict = TelosParser.load("infrastructure.telos")
 runtime.tick({"main": schema_dict}, {"us_cap": 1.0, "eu_cost": 20.0})
 ```
 
-Requirements: **`pyyaml`**. Expressions in the file are still evaluated with restricted `eval` at runtime — treat manifests as **trusted** (like code).
+Requires `pyyaml`. Expression handling is described above.
 
 ## `TelosRuntime.tick`
 
-Signature:
-
 ```python
 result = runtime.tick(
-    schemas_dict,           # Canvas: {"router": {...}, "hardware": {...}}
-    parameters or {},       # Numeric context: cap_*, cost_*, etc.
+    schemas_dict,           # e.g. {"router": {...}, "hardware": {...}} or {"main": {...}}
+    parameters or {},
 )
 ```
 
 **Behavior:**
 
-1. **Clock:** `dt` is advanced every tick (capped at 1s).
-2. **Memory:** If the payload includes **`router`**, memory rules come from that block (canvas). Otherwise, the **first** schema in the dict (in insertion order) that defines **`memory`** is used — typical for a single key such as **`main`** from a `.telos` file.
-3. **Compile order:** If **`router`** and/or **`hardware`** are present, only those run, in that order. Otherwise **all** non-empty keys are compiled **in insertion order** (e.g. one combined **`main`** matrix).
-4. Merges outputs into one dict and calls **`on_update`** on each actuator with that merged state.
-5. Returns `status`, `router` / `db` (canvas splits; empty for single-matrix runs), `memory`, and `state` (merged).
-
-The **canvas** still sends `{ router, hardware }`; **headless** demos can send one combined matrix under a single key.
+1. **Clock:** `dt` advanced each tick (capped at 1s).
+2. **Memory:** From `router` schema if present; else first schema in dict order that defines **`memory`** (typical for single **`main`** key).
+3. **Compile order:** If **`router`** / **`hardware`** present, those only, in that order. Else all non-empty keys in insertion order.
+4. Merge outputs; call **`on_update`** on each actuator with merged **state**.
+5. Return `status`, optional `router`/`db`, `memory`, `state`.
 
 ## Custom actuators
 
-`on_update` receives **merged** MILP outputs (e.g. `load_*`, `shards_*`). Filter keys inside your actuator. Full guide (prefixes, threading, optional deps, FAQ): **[ACTUATORS.md](./ACTUATORS.md)**.
+`on_update` receives merged MILP outputs. See **[ACTUATORS.md](./ACTUATORS.md)**.
 
 ```python
 from telos import TelosRuntime, BaseActuator, DockerActuator
@@ -118,19 +132,13 @@ class LoggingActuator(BaseActuator):
 
 rt = TelosRuntime()
 rt.attach_actuator(LoggingActuator())
-rt.attach_actuator(DockerActuator())  # optional; needs docker extra + daemon
+rt.attach_actuator(DockerActuator())
 ```
 
 ## Docker actuator
 
-- Requires **`docker`** on `PYTHONPATH` and a running **Docker Desktop** (or daemon).
-- Containers are labeled `telos_framework=true` and `node=<id>` for cleanup and reconciliation.
-- If Docker is missing or unreachable, the server still runs; the actuator stays in simulation mode.
-
-## Security note
-
-Both compilers evaluate **objective** and **constraint** strings with restricted `eval`. The **canvas** and any JSON you pass into `tick` must come from a **trusted** source, or you must replace evaluation with a safe expression layer.
+Needs `docker` extra and a running daemon. Labeled `telos_framework=true`, `node=<id>`. If unreachable, stays in simulation mode.
 
 ## Publishing / layout
 
-The PyPI project is **`telos-os`** (`pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`. Local development can still use `requirements.txt` alongside editable installs.
+PyPI **`telos-os`** (`pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`.

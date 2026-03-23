@@ -1,4 +1,8 @@
-"""SciPy/SymPy compiler for TIR schemas (CLI / agent path)."""
+"""
+**Experimental — continuous mode.** SciPy/SymPy compiler for ``TIRSchema`` (``main.py`` demos).
+
+Separate from the canonical PuLP MILP pipeline for ``.telos`` manifests.
+"""
 
 import numpy as np
 import sympy as sp

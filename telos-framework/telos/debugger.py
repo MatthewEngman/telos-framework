@@ -1,4 +1,4 @@
-"""Monte Carlo stress tests + deletion-filter IIS for infeasible MILP manifests."""
+"""MILP **debugger**: Monte Carlo parameter stress tests; witness hints for infeasibility."""
 
 from __future__ import annotations
 

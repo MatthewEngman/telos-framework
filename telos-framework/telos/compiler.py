@@ -1,4 +1,4 @@
-"""PuLP MILP engine for canvas / dynamic TelosSchema (no I/O, no time)."""
+"""PuLP MILP compiler for ``TelosSchema`` / ``.telos`` geometry (canonical solver core)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,14 @@ from typing import Any, Dict, Optional
 
 import pulp
 
+from .linear_milp import LinearMilpExpressionError, parse_linear_milp_expression
 from .models import TelosSchema
+
+
+def _as_pulp_affine(expr: Any) -> pulp.LpAffineExpression:
+    if isinstance(expr, (int, float)):
+        return pulp.LpAffineExpression(float(expr))
+    return expr  # LpVariable or LpAffineExpression
 
 
 class TelosCompiler:
@@ -33,15 +40,26 @@ class TelosCompiler:
                 cat=cat,
             )
 
-        env: Dict[str, Any] = {**lp_vars, **context, "max": max, "min": min}
+        env: Dict[str, Any] = {**lp_vars, **context}
 
-        prob += eval(schema.teleology.objective, {"__builtins__": None}, env)
+        try:
+            obj = parse_linear_milp_expression(schema.teleology.objective.strip(), env)
+        except LinearMilpExpressionError as e:
+            raise ValueError(f"[TelosCompiler] Invalid objective: {e}") from e
+        prob += obj
+
         for inv in schema.invariants:
-            expr = eval(inv.expression, {"__builtins__": None}, env)
+            try:
+                raw = parse_linear_milp_expression(inv.expression.strip(), env)
+            except LinearMilpExpressionError as e:
+                raise ValueError(
+                    f"[TelosCompiler] Invalid invariant expression {inv.expression!r}: {e}"
+                ) from e
+            lhs = _as_pulp_affine(raw)
             if inv.type == "eq":
-                prob += expr == 0
+                prob += lhs == 0
             else:
-                prob += expr >= 0
+                prob += lhs >= 0
 
         prob.solve(pulp.PULP_CBC_CMD(msg=False))
         if pulp.LpStatus[prob.status] != "Optimal":

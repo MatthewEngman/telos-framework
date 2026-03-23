@@ -24,7 +24,7 @@ cd telos-framework
 pytest
 ```
 
-Tests avoid the network, Docker, and Kubernetes. They cover the PuLP compiler, YAML parsing, a single-matrix `TelosRuntime.tick`, and the debugger’s feasibility check on `vulnerable.telos`.
+Tests avoid the network, Docker, and Kubernetes. They cover the PuLP compiler, YAML parsing, `telos validate`, a single-matrix `TelosRuntime.tick`, example manifests, the debugger’s feasibility check on `vulnerable.telos`, a **corpus** pass over every objective/invariant/memory string in checked-in `.telos` files, and **Hypothesis** fuzz tests for `linear_milp` / `memory_expr` (bounded time per sample; requires `pip install -e ".[dev]"`).
 
 ## CI/CD
 
@@ -39,4 +39,4 @@ Tests avoid the network, Docker, and Kubernetes. They cover the PuLP compiler, Y
 
 ## Security
 
-MILP objectives and constraints are evaluated with restricted `eval`. Do not point untrusted `.telos` or WebSocket payloads at a production server without a hardened expression layer.
+MILP expressions use **`telos.linear_milp`**; memory updates use **`telos.memory_expr`**. Do not point untrusted `.telos` or WebSocket payloads at production without policy controls. See [../SECURITY.md](../SECURITY.md) (repository root).

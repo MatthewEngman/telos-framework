@@ -1,4 +1,4 @@
-"""Temporal loop: memory, chained MILP matrices, actuator broadcast."""
+"""MILP **runtime**: clock, memory, chained router→hardware solves, actuator broadcast."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from .actuators.base import BaseActuator
 from .compiler import TelosCompiler
+from .memory_expr import MemoryExpressionError, eval_memory_update
 from .models import TelosSchema
 
 _SCHEMA_ORDER = ("router", "hardware")
@@ -45,10 +46,8 @@ class TelosRuntime:
             if k not in valid_names:
                 del self.memory_state[k]
 
-        base: Dict[str, Any] = {
-            **self.memory_state,
-            "max": max,
-            "min": min,
+        base: Dict[str, float] = {
+            **{k: float(v) for k, v in self.memory_state.items()},
             "dt": float(dt),
         }
         for v in schema.ontology.variables:
@@ -58,11 +57,14 @@ class TelosRuntime:
             name = m.name
             if name not in self.memory_state:
                 self.memory_state[name] = float(m.init)
-            base[name] = self.memory_state[name]
+            base[name] = float(self.memory_state[name])
             try:
-                val = eval(m.update, {"__builtins__": None}, base)
+                mem_env = {k: float(v) for k, v in base.items()}
+                val = eval_memory_update(m.update, mem_env)
                 self.memory_state[name] = float(val)
-                base[name] = self.memory_state[name]
+                base[name] = float(self.memory_state[name])
+            except MemoryExpressionError as e:
+                print(f"[TelosRuntime] Memory update failed for {name}: {e}")
             except Exception as e:
                 print(f"[TelosRuntime] Memory update failed for {name}: {e}")
 

@@ -1,4 +1,4 @@
-"""LLM: natural language -> `.telos` YAML, then strict Pydantic validation."""
+"""Optional LLM: natural language → draft ``.telos`` YAML, then ``TelosSchema`` validation."""
 
 from __future__ import annotations
 

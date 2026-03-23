@@ -1,34 +1,53 @@
-# Example `.telos` manifests
+# Example `.telos` manifests — learning progression
 
-Small, self-contained **MILP** stories in different domains. If you are new to Telos, read **[docs/START_HERE.md](../docs/START_HERE.md)** for a glossary (**MILP**, variables vs parameters) and your first terminal commands.
+Small **MILP** manifests in different domains. New users: **[docs/START_HERE.md](../docs/START_HERE.md)** (glossary, `telos validate` / `run` / `test`).
 
-**What these files are:** Each `.telos` file is **YAML** text Telos loads as a **manifest**—a list of variables, an objective to minimize/maximize, and constraint rules. **Parameters** (inputs you set) are listed under `ontology.parameters` and supplied at run time via a **JSON** file (`examples/params/*.json`) or Python code. Each example here is written so `TelosParser` accepts it and one `TelosRuntime.tick({"main": schema}, parameters)` run reaches a **HEALTHY** solution with the matching params.
+Each file is valid YAML that **`TelosParser`** accepts; with the matching **`examples/params/*.json`**, one **`TelosRuntime.tick({"main": schema}, params)`** reaches **HEALTHY**.
+
+---
+
+## Suggested order
+
+1. **Minimal manifest** — `router_minimal.telos` + `params/router_minimal.json`: two-region traffic, integer **shards** (routing + discrete capacity story).
+2. **Routing + hardware-style chain** — use the **canvas** or **`infrastructure.telos`** at repo root with [README](../README.md) headless/server docs (router + hardware matrices in one workflow).
+3. **Memory over time** — see [docs/SDK.md](../docs/SDK.md) (`memory` on ontology, heat-style updates in canvas manifests).
+4. **Actuator integration** — `router_minimal` with `--actuator docker` or `k8s_replica_plan.telos` with `--actuator k8s`; portfolio demo **`../hedge_fund.telos`** with `--actuator fintech`. Details: [docs/ACTUATORS.md](../docs/ACTUATORS.md).
+5. **Debugger / paradox detection** — `telos test vulnerable.telos --iters 500` from repo root (see [README](../README.md)).
+6. **Optional natural language** — `telos generate "..." --out draft.telos` then **`telos validate draft.telos`** before `run` (LLM output = **trusted input** after human review).
+
+---
+
+## Catalog
 
 | File | Domain | Typical actuator |
 |------|--------|------------------|
 | `router_minimal.telos` | Two-region traffic + integer shards | `docker` (`shards_*`) |
 | `k8s_replica_plan.telos` | Integer pod counts vs load | `k8s` (`replicas_*`) |
-| `inventory_split.telos` | Two-warehouse fulfillment | `none` (planning only) |
-| `energy_dispatch.telos` | Clean vs dirty generation mix | `none` |
+| `inventory_split.telos` | Two-warehouse fulfillment | `none` |
+| `energy_dispatch.telos` | Clean vs dirty generation | `none` |
 | `manufacturing_mix.telos` | Product mix under hour budget | `none` |
 
-The **portfolio** demo (`shares_*`, `fintech` actuator) lives at the package root: **`../hedge_fund.telos`**.
+Portfolio demo (`shares_*`, fintech): **`../hedge_fund.telos`**.
 
-## Run from the `telos-framework` directory
+---
+
+## Commands (from `telos-framework/`)
 
 ```bash
-# Planning-only (no Docker/K8s side effects)
-python -m telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
+telos validate examples/router_minimal.telos
+telos validate examples/router_minimal.telos --strict
 
-# With Docker reconciliation (needs Docker + pip install -e ".[docker]")
-python -m telos run examples/router_minimal.telos --actuator docker
+telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
 
-# Integer replica plan → cluster (needs kubeconfig + pip install -e ".[kubernetes]")
-python -m telos run examples/k8s_replica_plan.telos --actuator k8s --params examples/params/k8s_replica_plan.json
+telos run examples/router_minimal.telos --actuator docker
+
+telos run examples/k8s_replica_plan.telos --actuator k8s --params examples/params/k8s_replica_plan.json
 ```
 
-JSON **parameter** files live under `examples/params/` and match each manifest’s `ontology.parameters` names exactly (`router_minimal.json`, `k8s_replica_plan.json`, etc.).
+Parameter JSON files under `examples/params/` must match each manifest’s `ontology.parameters` names.
 
-## Implementing your own actuator
+---
 
-See **[docs/ACTUATORS.md](../docs/ACTUATORS.md)** for naming conventions (`shards_*`, `replicas_*`, `shares_*`), FAQs, and a minimal `BaseActuator` subclass.
+## Custom actuators
+
+[docs/ACTUATORS.md](../docs/ACTUATORS.md) — prefixes (`shards_*`, `replicas_*`, `shares_*`), `BaseActuator` subclass pattern.

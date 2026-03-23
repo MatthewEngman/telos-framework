@@ -1,4 +1,4 @@
-"""Pydantic models for dynamic MILP canvas schemas (.telos-style geometry)."""
+"""Pydantic **MILP** models for ``.telos`` manifests and ``TelosRuntime`` (canonical path)."""
 
 from __future__ import annotations
 

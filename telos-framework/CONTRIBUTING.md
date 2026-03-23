@@ -2,6 +2,8 @@
 
 Thanks for helping improve Telos. Contributions are licensed under the same terms as this project ([MIT](LICENSE)).
 
+**New to the codebase?** Skim **[docs/START_HERE.md](docs/START_HERE.md)** so `.telos`, `tick`, and actuators match the mental model used in issues and PRs.
+
 ## Setup
 
 ```bash

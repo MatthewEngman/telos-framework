@@ -1,6 +1,10 @@
 # Actuators: guide and FAQ
 
-**Actuators** are optional plugins that run **after** each successful MILP solve. `TelosRuntime` merges variable values from the compiler(s), then calls `on_update(optimal_state)` on every attached actuator. The solver does not talk to Docker, Kubernetes, or brokers by itself—the actuator is the narrow bridge from **math** to **machinery**.
+**New here?** Read **[START_HERE.md](./START_HERE.md)** for what a solver does and how `.telos` files work. This page focuses on the step **after** the math: turning numbers into **actions**.
+
+---
+
+**Actuators** are optional Python plugins that run **after** each successful MILP solve. The solver only computes numbers (e.g. “desired shard count = 3”). It does **not** open network connections or start containers by itself. `TelosRuntime` merges those numbers into one dictionary (`optimal_state` / `state`) and calls `on_update(...)` on each attached actuator. That is the deliberate bridge from **math** to **machinery** (Docker, Kubernetes, or your own code).
 
 ## Built-in actuators
 

@@ -2,10 +2,16 @@
 
 [![CI](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml)
 
-**Telos** is an experimental stack for **teleological specification**: variables, optimization objectives, and constraints. Two representations coexist:
+**New to Telos?** Read **[docs/START_HERE.md](docs/START_HERE.md)** first—a plain-language glossary, your first commands, and how `.telos` files map to the solver. No optimization background required.
 
-1. **TIR** (Telos Intermediate Representation) — domain-agnostic schema for **continuous** problems, typically produced by the LLM agent and solved with **SymPy + SciPy**.
-2. **MILP canvas schema** — Pydantic **`TelosSchema`** (`telos/models.py`) for **mixed-integer** problems, used by the **spatial IDE** and solved with **PuLP (CBC)**.
+---
+
+**Telos** is an experimental stack for **teleological specification**: you name **decision variables**, say what you want to **optimize**, and list **rules** (constraints) that must stay true. A **solver** picks numeric values for the variables. Optional **actuators** then use those numbers to affect the real world (Docker, Kubernetes) or demo logs.
+
+Two technical representations coexist in this repo (pick one learning path at first):
+
+1. **TIR** — JSON-style schema for **continuous** problems (variables can be fractional; no integer “count” guarantees). Often produced by an LLM, solved with **SymPy + SciPy** (`main.py` demos).
+2. **MILP canvas (`.telos` YAML)** — Pydantic **`TelosSchema`**: supports **integer** variables (e.g. replica counts) and **linear** math. Solved with **PuLP** and **CBC**. This is the path behind **`telos run`**, **`examples/`**, and the browser canvas.
 
 ## Architecture
 
@@ -23,7 +29,12 @@
 | **Headless** | `headless.py` | `.telos` + parameter timeline + actuators (no UI) |
 | **Demos** | `main.py` | CLI: intent → TIR → SciPy |
 
-**SDK overview:** [docs/SDK.md](docs/SDK.md). **Actuators (implement + FAQ):** [docs/ACTUATORS.md](docs/ACTUATORS.md). **Example manifests:** [examples/README.md](examples/README.md).
+| Doc | Audience |
+|-----|----------|
+| [docs/START_HERE.md](docs/START_HERE.md) | **Beginners** — glossary, first 15 minutes, how to read `.telos` |
+| [docs/SDK.md](docs/SDK.md) | Python API, `tick` contract, module map |
+| [docs/ACTUATORS.md](docs/ACTUATORS.md) | Side effects after each solve; implement your own actuator |
+| [examples/README.md](examples/README.md) | Copy-paste `telos run` examples across domains |
 
 ## Project layout
 
@@ -45,7 +56,9 @@ telos-framework/
 │   └── actuators/
 │       ├── __init__.py
 │       ├── base.py
-│       └── docker.py
+│       ├── docker.py
+│       ├── kubernetes.py
+│       └── fintech.py
 ├── main.py                  # CLI demos (TIR + SciPy)
 ├── headless.py              # Daemon: infrastructure.telos + timeline
 ├── infrastructure.telos     # Example combined MILP manifest (YAML)
@@ -54,6 +67,7 @@ telos-framework/
 ├── server.py                # FastAPI + WebSocket (uses SDK)
 ├── index.html               # Spatial canvas UI
 ├── docs/
+│   ├── START_HERE.md        # Beginner on-ramp (read this first)
 │   ├── SDK.md               # Python SDK reference
 │   └── ACTUATORS.md         # Actuator guide + FAQ
 ├── requirements.txt
@@ -75,7 +89,10 @@ python -m pip install -e ".[all]"   # core + docker + kubernetes + FastAPI serve
 python -m pip install -e .
 ```
 
-**PyPI-style package name:** `telos-os` (see `pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`.
+- **Minimal install** (`pip install -e .`) is enough for **`telos run`** with `--actuator none` and all **examples** that only need math.  
+- **`[all]`** adds optional integrations (Docker SDK, Kubernetes client, FastAPI server stack).
+
+**From PyPI (published package):** `pip install telos-os` (same extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`). See `pyproject.toml`.
 
 **Legacy / dev requirements file:**
 

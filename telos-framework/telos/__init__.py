@@ -9,7 +9,7 @@ from .generator import TelosGenerator
 from .parser import TelosParser
 from .runtime import TelosRuntime
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "BaseActuator",

@@ -1,6 +1,8 @@
 # Example `.telos` manifests
 
-Small, self-contained **MILP** stories in different domains. Each file is valid YAML for `TelosParser` and a single `TelosRuntime.tick({"main": schema}, parameters)`.
+Small, self-contained **MILP** stories in different domains. If you are new to Telos, read **[docs/START_HERE.md](../docs/START_HERE.md)** for a glossary (**MILP**, variables vs parameters) and your first terminal commands.
+
+**What these files are:** Each `.telos` file is **YAML** text Telos loads as a **manifest**—a list of variables, an objective to minimize/maximize, and constraint rules. **Parameters** (inputs you set) are listed under `ontology.parameters` and supplied at run time via a **JSON** file (`examples/params/*.json`) or Python code. Each example here is written so `TelosParser` accepts it and one `TelosRuntime.tick({"main": schema}, parameters)` run reaches a **HEALTHY** solution with the matching params.
 
 | File | Domain | Typical actuator |
 |------|--------|------------------|

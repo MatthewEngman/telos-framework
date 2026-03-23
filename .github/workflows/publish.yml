@@ -4,7 +4,7 @@
 #   1. Create https://pypi.org account (and optionally https://test.pypi.org).
 #   2. On PyPI: your account → Publishers → add GitHub workflow:
 #      repo: MatthewEngman/telos-framework, workflow file: publish.yml (this file).
-#      Optional: restrict to a GitHub Environment name if you create one and match it on PyPI.
+#      If using a GitHub Environment: set the same name in PyPI (Trusted Publisher) and in `environment:` below.
 #   3. Bump version in telos-framework/pyproject.toml (and telos/__init__.py if you keep them in sync).
 #   4. Run this workflow from the Actions tab.
 #
@@ -23,6 +23,8 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Must match the optional "Environment name" on PyPI Trusted Publisher (and GitHub → Environments).
+    environment: pypi
     defaults:
       run:
         working-directory: telos-framework

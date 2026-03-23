@@ -224,8 +224,8 @@ Build in code with `TIRSchema` / nested models (`telos/schema.py`, `main.py`). O
 
 ## License
 
-Specify your license when you publish (e.g. MIT).
+[MIT](LICENSE) — see `LICENSE` in this directory.
 
 ## Contributing
 
-Issues and PRs welcome: safer parsing, extra solvers, actuator plugins, `pyproject.toml` for PyPI (`telos-core`), or DAG-style multi-matrix graphs beyond the router → hardware chain.
+Issues and PRs welcome: safer parsing, extra solvers, actuator plugins, PyPI publishing polish, or DAG-style multi-matrix graphs beyond the router → hardware chain. By contributing, you agree your contributions are licensed under the same terms as this project (MIT).

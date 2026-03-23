@@ -68,8 +68,8 @@ MILP objectives, constraints, and memory updates use restricted **`eval`**. Trea
 
 ## License
 
-See [`telos-framework/README.md`](telos-framework/README.md) — specify a license when you open-source or distribute.
+The framework is released under the [MIT License](telos-framework/LICENSE) ([`telos-framework/LICENSE`](telos-framework/LICENSE)).
 
 ## Contributing
 
-Issues and PRs welcome in this repo. Suggested directions: safer expression evaluation, `pyproject.toml` / PyPI packaging, richer graph topologies beyond router → hardware.
+Issues and PRs welcome in this repo. Suggested directions: safer expression evaluation, packaging / PyPI, richer graph topologies beyond router → hardware. Contributions are expected to be under the MIT license unless you state otherwise in the PR.

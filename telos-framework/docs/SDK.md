@@ -1,8 +1,13 @@
 # Telos SDK (canvas / MILP path)
 
+**If you are new to Telos or to optimization**, read **[START_HERE.md](./START_HERE.md)** first. It defines **MILP**, **variables vs parameters**, **`.telos` manifests**, and **`tick`** in everyday language.
+
+---
+
 This document describes the **installable Python package** under `telos/`: validated schemas, the PuLP compiler, the temporal runtime, and pluggable **actuators**. It sits alongside the older **TIR + SciPy** stack used by `main.py` (see [README.md](../README.md)).
 
-For **actuator conventions, FAQs, and custom implementations**, see [ACTUATORS.md](./ACTUATORS.md). For **sample `.telos` files** across domains, see [examples/README.md](../examples/README.md).
+- **Actuators (conventions, FAQ, custom code):** [ACTUATORS.md](./ACTUATORS.md)  
+- **Example manifests + CLI one-liners:** [examples/README.md](../examples/README.md)
 
 ## Version
 

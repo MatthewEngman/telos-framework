@@ -2,6 +2,8 @@
 
 **Telos** (Telos OS) is an experimental **Infrastructure-as-Physics** toolkit: you describe goals and constraints as math, and a solver plus optional **actuators** (for example Docker) turn that into behavior over time.
 
+**First time here?** Open the beginner guide: **[telos-framework/docs/START_HERE.md](telos-framework/docs/START_HERE.md)** (glossary, first commands, no optimization background needed).
+
 Source layout: the framework lives under [`telos-framework/`](telos-framework/).
 
 ## What you get
@@ -52,7 +54,8 @@ python main.py finance
 
 ## Documentation
 
-- **Full guide** (architecture table, env vars, TIR reference): [`telos-framework/README.md`](telos-framework/README.md)
+- **Start here (beginners):** [`telos-framework/docs/START_HERE.md`](telos-framework/docs/START_HERE.md)
+- **Full framework guide** (architecture, env vars, TIR reference): [`telos-framework/README.md`](telos-framework/README.md)
 - **SDK API** (tick contract, security): [`telos-framework/docs/SDK.md`](telos-framework/docs/SDK.md)
 - **Actuators** (implement, naming, FAQ): [`telos-framework/docs/ACTUATORS.md`](telos-framework/docs/ACTUATORS.md)
 - **Example `.telos` set**: [`telos-framework/examples/README.md`](telos-framework/examples/README.md)

@@ -1,5 +1,7 @@
 # Telos Framework / Telos OS
 
+[![CI](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml)
+
 **Telos** is an experimental stack for **teleological specification**: variables, optimization objectives, and constraints. Two representations coexist:
 
 1. **TIR** (Telos Intermediate Representation) — domain-agnostic schema for **continuous** problems, typically produced by the LLM agent and solved with **SymPy + SciPy**.
@@ -127,7 +129,7 @@ python -m telos run global_router.telos --interval 2 --no-docker
 # Same with explicit actuator (docker | k8s | fintech | none)
 python -m telos run hedge_fund.telos --actuator fintech --fintech-demo
 
-# Hub placeholder (writes .telos_modules/<name>.py)
+# Install stub (writes .telos_modules/<name>.py only — no remote registry)
 python -m telos install vendor/my-actuator
 
 # Monte Carlo adversarial check (exit 2 if infeasible context found)
@@ -228,4 +230,4 @@ Build in code with `TIRSchema` / nested models (`telos/schema.py`, `main.py`). O
 
 ## Contributing
 
-Issues and PRs welcome: safer parsing, extra solvers, actuator plugins, PyPI publishing polish, or DAG-style multi-matrix graphs beyond the router → hardware chain. By contributing, you agree your contributions are licensed under the same terms as this project (MIT).
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, **pytest**, and PR expectations. Issues and PRs welcome: safer parsing, extra solvers, actuator plugins, PyPI polish, or richer matrix graphs. By contributing, you agree your contributions are under the same terms as this project (MIT).

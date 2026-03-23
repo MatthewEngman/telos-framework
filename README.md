@@ -72,4 +72,4 @@ The framework is released under the [MIT License](telos-framework/LICENSE) ([`te
 
 ## Contributing
 
-Issues and PRs welcome in this repo. Suggested directions: safer expression evaluation, packaging / PyPI, richer graph topologies beyond router → hardware. Contributions are expected to be under the MIT license unless you state otherwise in the PR.
+See [`telos-framework/CONTRIBUTING.md`](telos-framework/CONTRIBUTING.md) for environment setup and running tests. Issues and PRs welcome. Contributions are expected to be under the MIT license unless you state otherwise in the PR.

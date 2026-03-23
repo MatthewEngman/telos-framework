@@ -35,7 +35,12 @@ dependencies = [
 docker = ["docker"]
 kubernetes = ["kubernetes"]
 server = ["fastapi", "uvicorn[standard]", "websockets"]
+dev = ["pytest>=7"]
 all = ["docker", "kubernetes", "fastapi", "uvicorn[standard]", "websockets"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
 
 [project.scripts]
 telos = "telos.cli:main"

@@ -131,18 +131,18 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
-    """Stub for a future hub.telos.dev registry."""
-    print("[*] Telos Actuator Hub (preview) - not yet connected to hub.telos.dev")
+    """Stub: local placeholder only (no remote registry)."""
+    print("[*] telos install (stub) — no remote package server; writes a local placeholder only.")
     time.sleep(0.3)
-    print(f"[*] Reserving package name: {args.package!r}")
+    print(f"[*] Package id: {args.package!r}")
     time.sleep(0.3)
     root = Path.cwd() / ".telos_modules"
     root.mkdir(parents=True, exist_ok=True)
     safe = args.package.replace("/", "_").replace("\\", "_") + ".py"
     out = root / safe
     out.write_text(
-        f"# Telos hub stub: {args.package}\n"
-        "# Install a future published actuator wheel here.\n",
+        f"# Telos install stub: {args.package}\n"
+        "# Replace with a real actuator module or install via pip.\n",
         encoding="utf-8",
     )
     print(f"[+] Wrote placeholder {out}")
@@ -219,7 +219,7 @@ def main() -> None:
 
     hub_p = sub.add_parser(
         "install",
-        help="Placeholder for future Actuator Hub packages (hub.telos.dev)",
+        help="Stub: write a placeholder file under .telos_modules/ (no remote downloads)",
     )
     hub_p.add_argument(
         "package",

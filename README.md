@@ -2,7 +2,7 @@
 
 **Telos** (Telos OS) is an experimental **Infrastructure-as-Physics** toolkit: you describe goals and constraints as math, and a solver plus optional **actuators** (for example Docker) turn that into behavior over time.
 
-This repository is **private** and contains the full framework under [`telos-framework/`](telos-framework/).
+Source layout: the framework lives under [`telos-framework/`](telos-framework/).
 
 ## What you get
 

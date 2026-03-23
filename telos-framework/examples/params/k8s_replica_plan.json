@@ -1,0 +1,5 @@
+{
+  "required_rps": 100.0,
+  "rps_per_web_pod": 40.0,
+  "rps_per_worker_pod": 30.0
+}

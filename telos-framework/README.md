@@ -23,7 +23,7 @@
 | **Headless** | `headless.py` | `.telos` + parameter timeline + actuators (no UI) |
 | **Demos** | `main.py` | CLI: intent → TIR → SciPy |
 
-**SDK overview (imports, tick contract, custom actuators):** [docs/SDK.md](docs/SDK.md).
+**SDK overview:** [docs/SDK.md](docs/SDK.md). **Actuators (implement + FAQ):** [docs/ACTUATORS.md](docs/ACTUATORS.md). **Example manifests:** [examples/README.md](examples/README.md).
 
 ## Project layout
 
@@ -49,10 +49,13 @@ telos-framework/
 ├── main.py                  # CLI demos (TIR + SciPy)
 ├── headless.py              # Daemon: infrastructure.telos + timeline
 ├── infrastructure.telos     # Example combined MILP manifest (YAML)
+├── hedge_fund.telos         # Portfolio demo (fintech actuator)
+├── examples/                # More domain-diverse .telos + params/*.json
 ├── server.py                # FastAPI + WebSocket (uses SDK)
 ├── index.html               # Spatial canvas UI
 ├── docs/
-│   └── SDK.md               # Python SDK reference
+│   ├── SDK.md               # Python SDK reference
+│   └── ACTUATORS.md         # Actuator guide + FAQ
 ├── requirements.txt
 └── README.md
 ```
@@ -120,6 +123,9 @@ python -m telos generate "Your architecture in English..." --out global_router.t
 
 # Headless loop (default tick key `main`; optional JSON parameters file)
 python -m telos run global_router.telos --interval 2 --no-docker
+
+# Examples: params match ontology.parameters (see examples/README.md)
+python -m telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
 
 # Same with explicit actuator (docker | k8s | fintech | none)
 python -m telos run hedge_fund.telos --actuator fintech --fintech-demo

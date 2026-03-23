@@ -1,0 +1,27 @@
+# inventory_split.telos — fulfill one order from two warehouses at different unit costs
+ontology:
+  variables:
+    - name: ship_from_a
+      type: float
+      bounds: [0.0, 10000.0]
+    - name: ship_from_b
+      type: float
+      bounds: [0.0, 10000.0]
+  parameters:
+    - order_units
+    - cap_a
+    - cap_b
+    - unit_cost_a
+    - unit_cost_b
+
+teleology:
+  direction: minimize
+  objective: "unit_cost_a * ship_from_a + unit_cost_b * ship_from_b"
+
+invariants:
+  - type: eq
+    expression: "ship_from_a + ship_from_b - order_units"
+  - type: ineq
+    expression: "cap_a - ship_from_a"
+  - type: ineq
+    expression: "cap_b - ship_from_b"

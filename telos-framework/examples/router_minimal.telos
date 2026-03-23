@@ -1,0 +1,30 @@
+# router_minimal.telos — tiny traffic + shard model (DockerActuator reads shards_*)
+ontology:
+  variables:
+    - name: load_east
+      type: float
+      bounds: [0.0, 1.0]
+    - name: load_west
+      type: float
+      bounds: [0.0, 1.0]
+    - name: shards_east
+      type: int
+      bounds: [0, 10]
+    - name: shards_west
+      type: int
+      bounds: [0, 10]
+  parameters:
+    - east_latency_weight
+    - west_latency_weight
+
+teleology:
+  direction: minimize
+  objective: "east_latency_weight * load_east + west_latency_weight * load_west + shards_east + shards_west"
+
+invariants:
+  - type: eq
+    expression: "load_east + load_west - 1.0"
+  - type: ineq
+    expression: "shards_east - (load_east * 8)"
+  - type: ineq
+    expression: "shards_west - (load_west * 8)"

@@ -1,0 +1,7 @@
+{
+  "margin_alpha": 20.0,
+  "margin_beta": 15.0,
+  "hours_per_alpha": 2.0,
+  "hours_per_beta": 1.0,
+  "machine_hours_available": 400.0
+}

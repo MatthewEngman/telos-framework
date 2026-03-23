@@ -1,0 +1,23 @@
+# k8s_replica_plan.telos — integer replica counts (pairs with KubernetesActuator: replicas_<deployment>)
+ontology:
+  variables:
+    - name: replicas_web
+      type: int
+      bounds: [0, 20]
+    - name: replicas_worker
+      type: int
+      bounds: [0, 20]
+  parameters:
+    - required_rps
+    - rps_per_web_pod
+    - rps_per_worker_pod
+
+teleology:
+  direction: minimize
+  objective: "replicas_web + replicas_worker"
+
+invariants:
+  - type: ineq
+    expression: "replicas_web * rps_per_web_pod - required_rps"
+  - type: ineq
+    expression: "replicas_worker * rps_per_worker_pod - required_rps * 0.4"

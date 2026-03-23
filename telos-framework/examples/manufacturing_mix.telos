@@ -1,0 +1,23 @@
+# manufacturing_mix.telos — product mix under machine-hour budget (maximize margin)
+ontology:
+  variables:
+    - name: units_alpha
+      type: float
+      bounds: [0.0, 500.0]
+    - name: units_beta
+      type: float
+      bounds: [0.0, 500.0]
+  parameters:
+    - margin_alpha
+    - margin_beta
+    - hours_per_alpha
+    - hours_per_beta
+    - machine_hours_available
+
+teleology:
+  direction: maximize
+  objective: "margin_alpha * units_alpha + margin_beta * units_beta"
+
+invariants:
+  - type: ineq
+    expression: "machine_hours_available - (hours_per_alpha * units_alpha + hours_per_beta * units_beta)"

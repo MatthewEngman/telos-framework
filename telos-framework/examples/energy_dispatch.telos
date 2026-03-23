@@ -1,0 +1,24 @@
+# energy_dispatch.telos — split demand across clean vs dirty generation (cost minimization)
+ontology:
+  variables:
+    - name: gen_clean
+      type: float
+      bounds: [0.0, 500.0]
+    - name: gen_dirty
+      type: float
+      bounds: [0.0, 500.0]
+  parameters:
+    - demand_mw
+    - clean_cap_mw
+    - marginal_cost_clean
+    - marginal_cost_dirty
+
+teleology:
+  direction: minimize
+  objective: "marginal_cost_clean * gen_clean + marginal_cost_dirty * gen_dirty"
+
+invariants:
+  - type: ineq
+    expression: "gen_clean + gen_dirty - demand_mw"
+  - type: ineq
+    expression: "clean_cap_mw - gen_clean"

@@ -1,0 +1,6 @@
+{
+  "demand_mw": 100.0,
+  "clean_cap_mw": 70.0,
+  "marginal_cost_clean": 10.0,
+  "marginal_cost_dirty": 80.0
+}

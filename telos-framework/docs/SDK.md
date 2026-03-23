@@ -2,6 +2,8 @@
 
 This document describes the **installable Python package** under `telos/`: validated schemas, the PuLP compiler, the temporal runtime, and pluggable **actuators**. It sits alongside the older **TIR + SciPy** stack used by `main.py` (see [README.md](../README.md)).
 
+For **actuator conventions, FAQs, and custom implementations**, see [ACTUATORS.md](./ACTUATORS.md). For **sample `.telos` files** across domains, see [examples/README.md](../examples/README.md).
+
 ## Version
 
 Package version is exposed as `telos.__version__` (see `telos/__init__.py`).
@@ -100,8 +102,10 @@ The **canvas** still sends `{ router, hardware }`; **headless** demos can send o
 
 ## Custom actuators
 
+`on_update` receives **merged** MILP outputs (e.g. `load_*`, `shards_*`). Filter keys inside your actuator. Full guide (prefixes, threading, optional deps, FAQ): **[ACTUATORS.md](./ACTUATORS.md)**.
+
 ```python
-from telos import TelosRuntime, BaseActuator
+from telos import TelosRuntime, BaseActuator, DockerActuator
 
 class LoggingActuator(BaseActuator):
     def on_update(self, optimal_state: dict) -> None:
@@ -109,10 +113,8 @@ class LoggingActuator(BaseActuator):
 
 rt = TelosRuntime()
 rt.attach_actuator(LoggingActuator())
-rt.attach_actuator(DockerActuator())  # optional
+rt.attach_actuator(DockerActuator())  # optional; needs docker extra + daemon
 ```
-
-`on_update` receives **merged** MILP outputs (e.g. `load_*`, `shards_*`). Filter keys inside your actuator.
 
 ## Docker actuator
 
@@ -126,4 +128,4 @@ Both compilers evaluate **objective** and **constraint** strings with restricted
 
 ## Publishing / layout
 
-To ship as **`telos-core`** (or similar) on PyPI you would add `pyproject.toml` with package metadata and optional extras (e.g. `pip install telos-core[canvas]` → FastAPI + PuLP + docker). This repo currently uses `requirements.txt` for local development.
+The PyPI project is **`telos-os`** (`pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`. Local development can still use `requirements.txt` alongside editable installs.

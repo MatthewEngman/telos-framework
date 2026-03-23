@@ -1,0 +1,11 @@
+numpy
+scipy
+sympy
+pydantic
+openai
+fastapi
+uvicorn[standard]
+websockets
+pulp
+docker
+pyyaml

@@ -1,0 +1,40 @@
+# infrastructure.telos
+# Domain: Global Cloud Router (single combined MILP — Infrastructure-as-Physics)
+
+ontology:
+  variables:
+    - name: load_us
+      type: float
+      bounds: [0.0, 1.0]
+    - name: load_eu
+      type: float
+      bounds: [0.0, 1.0]
+    - name: shards_us
+      type: int
+      bounds: [0, 15]
+    - name: shards_eu
+      type: int
+      bounds: [0, 15]
+
+  parameters:
+    - us_cap
+    - eu_cost
+
+memory:
+  - name: heat_us
+    init: 0.0
+    update: "max(0.0, min(40.0, heat_us + (load_us - 0.6) * 15.0 * dt))"
+
+teleology:
+  direction: minimize
+  objective: "(10 + heat_us)*load_us + eu_cost*load_eu + shards_us + shards_eu"
+
+invariants:
+  - type: eq
+    expression: "load_us + load_eu - 1.0"
+  - type: ineq
+    expression: "us_cap - load_us"
+  - type: ineq
+    expression: "shards_us - (load_us * 10)"
+  - type: ineq
+    expression: "shards_eu - (load_eu * 10)"

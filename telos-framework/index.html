@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Telos OS | Latent Canvas IDE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background-color: #0f172a; color: #f8fafc; font-family: ui-monospace, monospace; overflow: hidden; user-select: none; }
+        .grid-bg { background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 24px 24px; width: 100vw; height: 100vh; position: absolute; z-index: 0; }
+        .node { position: absolute; transition: box-shadow 0.2s; z-index: 10; border: 2px solid #334155; }
+        .node-header { padding: 8px; background: #1e293b; border-bottom: 1px solid #334155; cursor: grab; font-weight: bold; font-size: 10px; color: #38bdf8; display: flex; justify-content: space-between; border-radius: 10px 10px 0 0;}
+        .node-header:active { cursor: grabbing; }
+        .port { width: 14px; height: 14px; background: #94a3b8; border-radius: 50%; cursor: crosshair; position: absolute; top: 50%; transform: translateY(-50%); border: 3px solid #1e293b; z-index: 20; transition: all 0.2s; }
+        .port:hover { background: #38bdf8; transform: translateY(-50%) scale(1.3); }
+        .port-out { right: -7px; } .port-in { left: -7px; }
+        .wire { fill: none; stroke: #38bdf8; stroke-width: 3; stroke-linecap: round; transition: opacity 0.1s; }
+        .shard { width: 10px; height: 10px; background: #fbbf24; display: inline-block; margin: 1px; border-radius: 2px; box-shadow: 0 0 5px rgba(251, 191, 36, 0.4); }
+        .heat-bar { height: 6px; background: #020617; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        .heat-fill { height: 100%; width: 0%; transition: width 0.1s; background: #f97316; }
+        input[type="range"] { accent-color: #38bdf8; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg" id="canvas">
+        <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+    </div>
+
+    <div class="absolute top-6 left-6 z-50 bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-xl shadow-2xl w-72">
+        <h1 class="text-xl font-bold text-sky-400 tracking-widest mb-1">TELOS IDE</h1>
+        <p class="text-[9px] text-slate-400 mb-4 font-bold">INFINITE SPATIAL CANVAS</p>
+        <button type="button" onclick="addServerNode()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded mb-2 transition text-xs shadow-lg">+ ADD SERVER NODE</button>
+        <div class="bg-black p-2 rounded border border-slate-800 text-center mt-2 mb-4">
+            <p id="status" class="text-xs text-yellow-500 font-bold">WAITING FOR GEOMETRY...</p>
+            <p id="status-hint" class="text-[9px] text-slate-600 mt-1 leading-tight"></p>
+        </div>
+        <div class="text-[10px] text-slate-400 leading-relaxed border-t border-slate-700 pt-3">
+            <p class="mb-1"><strong class="text-white">1. Create:</strong> Add server nodes.</p>
+            <p class="mb-1"><strong class="text-white">2. Wire:</strong> Drag from TRAFFIC (grey dot) to a server inlet.</p>
+            <p><strong class="text-white">3. Tune:</strong> Capacity / cost sliders; heat accumulates above ~60% load.</p>
+        </div>
+    </div>
+
+    <script>
+        function wsUrl() {
+            const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+            if (window.location.protocol === "file:") return "ws://127.0.0.1:8000/ws";
+            const h = window.location.host;
+            if (!h) return "ws://127.0.0.1:8000/ws";
+            return `${proto}//${h}/ws`;
+        }
+
+        const canvas = document.getElementById("canvas");
+        const svg = document.getElementById("svg-layer");
+
+        let nodes = [{ id: "src", type: "source", x: 100, y: window.innerHeight / 2 - 80 }];
+        let edges = [];
+        let serverCount = 0;
+
+        let dragNode = null, offsetX = 0, offsetY = 0;
+        let wiringFrom = null, mouseX = 0, mouseY = 0;
+
+        let socket = null;
+        let tickTimer = null;
+        let reconnectTimer = null;
+
+        function setHint(t) {
+            const el = document.getElementById("status-hint");
+            if (el) el.textContent = t || "";
+        }
+
+        function addServerNode() {
+            serverCount++;
+            nodes.push({
+                id: `s${serverCount}`,
+                type: "server",
+                x: 400 + Math.random() * 50,
+                y: 100 + (serverCount - 1) * 180,
+                cap: 1.0,
+                cost: 20,
+            });
+            render();
+        }
+
+        function buildDynamicSchema() {
+            const connectedIds = edges.filter((e) => e.from === "src").map((e) => e.to);
+            const active = nodes.filter((n) => connectedIds.includes(n.id));
+            if (active.length === 0) return null;
+
+            const schema = {
+                router: {
+                    ontology: { variables: [] },
+                    memory: [],
+                    invariants: [],
+                    teleology: {},
+                },
+                hardware: {
+                    ontology: { variables: [] },
+                    invariants: [],
+                    teleology: {},
+                },
+            };
+            const params = {};
+
+            schema.router.invariants.push({
+                type: "eq",
+                expression: active.map((s) => `load_${s.id}`).join(" + ") + " - 1.0",
+            });
+
+            const objFuncA = [];
+            const objFuncB = [];
+
+            active.forEach((s) => {
+                schema.router.ontology.variables.push({
+                    name: `load_${s.id}`,
+                    type: "float",
+                    bounds: [0.0, 1.0],
+                });
+                schema.hardware.ontology.variables.push({
+                    name: `shards_${s.id}`,
+                    type: "int",
+                    bounds: [0, 20],
+                });
+
+                params[`cap_${s.id}`] = s.cap;
+                params[`cost_${s.id}`] = s.cost;
+
+                schema.router.invariants.push({
+                    type: "ineq",
+                    expression: `cap_${s.id} - load_${s.id}`,
+                });
+                schema.hardware.invariants.push({
+                    type: "ineq",
+                    expression: `shards_${s.id} - (load_${s.id} * 10)`,
+                });
+
+                schema.router.memory.push({
+                    name: `heat_${s.id}`,
+                    init: 0.0,
+                    update: `max(0.0, min(40.0, heat_${s.id} + (load_${s.id} - 0.6) * 15.0 * dt))`,
+                });
+
+                objFuncA.push(`(cost_${s.id} + heat_${s.id}) * load_${s.id}`);
+                objFuncB.push(`shards_${s.id}`);
+            });
+
+            schema.router.teleology = {
+                direction: "minimize",
+                objective: objFuncA.join(" + "),
+            };
+            schema.hardware.teleology = {
+                direction: "minimize",
+                objective: objFuncB.join(" + "),
+            };
+
+            return { schema, parameters: params };
+        }
+
+        function tickSend() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            const payload = buildDynamicSchema();
+            if (!payload) {
+                document.getElementById("status").textContent = "NO GEOMETRY DETECTED";
+                document.getElementById("status").className = "text-xs text-yellow-500 font-bold";
+                return;
+            }
+            socket.send(JSON.stringify(payload));
+        }
+
+        function connectWs() {
+            clearTimeout(reconnectTimer);
+            if (tickTimer) {
+                clearInterval(tickTimer);
+                tickTimer = null;
+            }
+            setHint("Connecting…");
+            try {
+                socket = new WebSocket(wsUrl());
+            } catch {
+                scheduleReconnect();
+                return;
+            }
+
+            socket.onopen = () => {
+                setHint("");
+                tickTimer = setInterval(tickSend, 50);
+            };
+
+            socket.onerror = () => {
+                document.getElementById("status").textContent = "WEBSOCKET ERROR";
+                document.getElementById("status").className = "text-xs text-amber-500 font-bold";
+                setHint("Run python server.py and open this page from that host (not file://).");
+            };
+
+            socket.onclose = () => {
+                if (tickTimer) {
+                    clearInterval(tickTimer);
+                    tickTimer = null;
+                }
+                document.getElementById("status").textContent = "DISCONNECTED — retrying…";
+                document.getElementById("status").className = "text-xs text-amber-500 font-bold";
+                scheduleReconnect();
+            };
+
+            socket.onmessage = (event) => {
+                let data;
+                try {
+                    data = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+                const st = data.status != null ? String(data.status) : "";
+                if (st.includes("HEALTHY")) {
+                    document.getElementById("status").textContent = `OS STABLE (${Number(data.ms).toFixed(1)}ms)`;
+                    document.getElementById("status").className = "text-xs text-green-400 font-bold";
+
+                    nodes.filter((n) => n.type === "server").forEach((s) => {
+                        const l = data.router[`load_${s.id}`];
+                        const h = data.memory ? data.memory[`heat_${s.id}`] : 0;
+                        const sh = data.db[`shards_${s.id}`];
+                        if (l === undefined) return;
+
+                        const el = document.getElementById(`node-${s.id}`);
+                        if (!el) return;
+
+                        const valEl = document.getElementById(`val-${s.id}`);
+                        if (valEl) valEl.textContent = Math.round(l * 100) + "%";
+
+                        const hf = document.getElementById(`heatfill-${s.id}`);
+                        if (hf) {
+                            const heat = Number(h) || 0;
+                            hf.style.width = `${(heat / 40) * 100}%`;
+                            hf.style.background = heat > 30 ? "#ef4444" : heat > 15 ? "#f97316" : "#eab308";
+                        }
+
+                        const shardEl = document.getElementById(`shards-${s.id}`);
+                        if (shardEl) {
+                            const n = Math.max(0, Math.round(Number(sh) || 0));
+                            shardEl.innerHTML = Array(n).fill('<div class="shard"></div>').join("");
+                        }
+
+                        const costEl = document.getElementById(`costlbl-${s.id}`);
+                        if (costEl) {
+                            const heat = Number(h) || 0;
+                            costEl.textContent = `Total Cost: $${(s.cost + heat).toFixed(2)}`;
+                        }
+
+                        el.style.boxShadow = l > 0.01 ? "0 0 20px rgba(56, 189, 248, 0.2)" : "none";
+                        el.style.borderColor = l > 0.01 ? "#38bdf8" : "#334155";
+
+                        const wire = document.getElementById(`wire-src-${s.id}`);
+                        if (wire) {
+                            wire.style.strokeWidth = Math.max(l * 30, 2) + "px";
+                            wire.style.opacity = l > 0.01 ? "0.9" : "0.15";
+                        }
+                    });
+                } else {
+                    document.getElementById("status").textContent = st || "FATAL";
+                    document.getElementById("status").className = "text-xs text-red-500 font-bold";
+                }
+            };
+        }
+
+        function scheduleReconnect() {
+            reconnectTimer = setTimeout(connectWs, 1200);
+        }
+
+        connectWs();
+
+        function render() {
+            document.querySelectorAll(".node-element").forEach((el) => el.remove());
+            nodes.forEach((n) => {
+                const el = document.createElement("div");
+                el.className =
+                    "node node-element bg-slate-900 rounded-xl shadow-xl w-48 " +
+                    (n.type === "source"
+                        ? "!w-32 !rounded-full !h-32 flex items-center justify-center border-4 border-slate-600 shadow-[0_0_30px_rgba(255,255,255,0.05)]"
+                        : "");
+                el.style.left = n.x + "px";
+                el.style.top = n.y + "px";
+                el.id = `node-${n.id}`;
+
+                if (n.type === "source") {
+                    el.innerHTML = `<div class="node-header w-full h-full absolute inset-0 rounded-full opacity-0 cursor-grab" onmousedown="startDrag('${n.id}', event)"></div>
+                                    <p class="text-[10px] text-slate-400 font-bold text-center pointer-events-none">TRAFFIC<br><span class="text-2xl text-white">100%</span></p>
+                                    <div class="port port-out" onmousedown="startWiring('${n.id}', event)"></div>`;
+                } else {
+                    el.innerHTML = `
+                        <div class="port port-in" onmouseup="finishWiring('${n.id}', event)"></div>
+                        <div class="node-header" onmousedown="startDrag('${n.id}', event)"><span>SERVER ${n.id.replace("s", "")}</span><button type="button" class="text-red-500 hover:text-red-400" onclick="deleteNode('${n.id}')">X</button></div>
+                        <div class="p-3">
+                            <p class="text-[9px] text-slate-400 font-bold" id="costlbl-${n.id}">Total Cost: $${n.cost.toFixed(2)}</p>
+                            <p class="text-3xl font-bold mt-1 text-white" id="val-${n.id}">0%</p>
+                            <div class="heat-bar"><div id="heatfill-${n.id}" class="heat-fill"></div></div>
+                            <div class="mt-3">
+                                <div class="flex justify-between"><label class="text-[9px] text-slate-400 uppercase">Capacity</label><span class="text-[9px] text-slate-300" id="caplbl-${n.id}">${Math.round(n.cap * 100)}%</span></div>
+                                <input type="range" min="0" max="1" step="0.05" value="${n.cap}" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" oninput="updateNode('${n.id}', 'cap', this.value)">
+                                <div class="flex justify-between mt-2"><label class="text-[9px] text-slate-400 uppercase">Base Cost</label><span class="text-[9px] text-slate-300" id="basecostlbl-${n.id}">$${n.cost}</span></div>
+                                <input type="range" min="5" max="50" step="1" value="${n.cost}" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" oninput="updateNode('${n.id}', 'cost', this.value)">
+                            </div>
+                            <div class="mt-2 min-h-[20px] flex flex-wrap" id="shards-${n.id}"></div>
+                        </div>`;
+                }
+                canvas.appendChild(el);
+            });
+            drawEdges();
+        }
+
+        function updateNode(id, prop, val) {
+            const n = nodes.find((x) => x.id === id);
+            if (!n) return;
+            n[prop] = parseFloat(val);
+            if (prop === "cap") {
+                const lbl = document.getElementById(`caplbl-${id}`);
+                if (lbl) lbl.textContent = Math.round(n.cap * 100) + "%";
+            }
+            if (prop === "cost") {
+                const lbl = document.getElementById(`basecostlbl-${id}`);
+                if (lbl) lbl.textContent = "$" + n.cost;
+            }
+        }
+
+        function deleteNode(id) {
+            nodes = nodes.filter((n) => n.id !== id);
+            edges = edges.filter((e) => e.from !== id && e.to !== id);
+            render();
+        }
+
+        function startDrag(id, e) {
+            dragNode = nodes.find((n) => n.id === id);
+            const el = document.getElementById(`node-${id}`);
+            offsetX = e.clientX - parseInt(el.style.left, 10);
+            offsetY = e.clientY - parseInt(el.style.top, 10);
+        }
+
+        function startWiring(id, e) {
+            e.stopPropagation();
+            wiringFrom = id;
+        }
+
+        function finishWiring(id) {
+            if (
+                wiringFrom &&
+                wiringFrom !== id &&
+                !edges.find((edge) => edge.from === wiringFrom && edge.to === id)
+            ) {
+                edges.push({ from: wiringFrom, to: id });
+                render();
+            }
+            wiringFrom = null;
+        }
+
+        window.addEventListener("mouseup", () => {
+            dragNode = null;
+            wiringFrom = null;
+            drawEdges();
+        });
+
+        window.addEventListener("mousemove", (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            if (dragNode) {
+                dragNode.x = mouseX - offsetX;
+                dragNode.y = mouseY - offsetY;
+                const el = document.getElementById(`node-${dragNode.id}`);
+                if (el) {
+                    el.style.left = dragNode.x + "px";
+                    el.style.top = dragNode.y + "px";
+                }
+                drawEdges();
+            }
+            if (wiringFrom) drawEdges();
+        });
+
+        function drawEdges() {
+            let paths = "";
+            const getPort = (id, type) => {
+                const el = document.getElementById(`node-${id}`);
+                if (!el) return { x: 0, y: 0 };
+                return {
+                    x: parseInt(el.style.left, 10) + (type === "out" ? el.offsetWidth : 0),
+                    y: parseInt(el.style.top, 10) + el.offsetHeight / 2,
+                };
+            };
+            const drawCurve = (p1, p2) =>
+                `M ${p1.x},${p1.y} C ${p1.x + Math.abs(p2.x - p1.x) / 2},${p1.y} ${p1.x + Math.abs(p2.x - p1.x) / 2},${p2.y} ${p2.x},${p2.y}`;
+
+            edges.forEach((e) => {
+                paths += `<path id="wire-${e.from}-${e.to}" class="wire" d="${drawCurve(getPort(e.from, "out"), getPort(e.to, "in"))}" />`;
+            });
+            if (wiringFrom) {
+                paths += `<path class="wire stroke-slate-500 opacity-50" style="stroke-dasharray:5,5" d="${drawCurve(getPort(wiringFrom, "out"), { x: mouseX, y: mouseY })}" />`;
+            }
+            svg.innerHTML = paths;
+        }
+
+        render();
+    </script>
+</body>
+</html>

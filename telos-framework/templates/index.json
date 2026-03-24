@@ -1,9 +1,9 @@
 {
   "schema": "telos-templates-index/v1",
-  "generated_at": "2026-03-24T23:22:17Z",
+  "generated_at": "2026-03-24T23:28:24Z",
   "source": {
-    "repository": null,
-    "commit": null
+    "repository": "MatthewEngman/telos-framework",
+    "commit": "1d82bd28962393fa51598d13bbcc69e6ec197145"
   },
   "templates": []
 }

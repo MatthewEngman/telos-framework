@@ -17,11 +17,15 @@ from telos.probe_defaults import default_probe_parameters
 
 ROOT = Path(__file__).resolve().parents[1]
 
-_TELOS_FILES = sorted((ROOT / "examples").glob("*.telos")) + [
-    ROOT / "infrastructure.telos",
-    ROOT / "vulnerable.telos",
-    ROOT / "hedge_fund.telos",
-]
+_TELOS_FILES = (
+    sorted((ROOT / "examples").glob("*.telos"))
+    + sorted((ROOT / "templates").glob("*.telos"))
+    + [
+        ROOT / "infrastructure.telos",
+        ROOT / "vulnerable.telos",
+        ROOT / "hedge_fund.telos",
+    ]
+)
 
 
 def _milp_env_for_manifest(data: dict) -> dict:

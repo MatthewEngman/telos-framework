@@ -32,6 +32,37 @@ invariants:
     assert d["ontology"]["variables"][0]["name"] == "x"
 
 
+def test_parser_optional_template_section() -> None:
+    yaml = """
+template:
+  name: open_claw_token_optimization
+  category: ai-ml
+  author: "@example"
+  description: "Optimize token spend for OpenClaw agents"
+  actuators:
+    - OpenClawTokenOptimization
+ontology:
+  variables:
+    - name: x
+      type: float
+      bounds: [0.0, 1.0]
+  parameters: []
+teleology:
+  direction: minimize
+  objective: "x"
+invariants:
+  - type: eq
+    expression: "x - 0.5"
+"""
+    d = TelosParser.loads(yaml.strip(), silent=True)
+    assert d["template"]["name"] == "open_claw_token_optimization"
+    assert d["template"]["actuators"] == ["OpenClawTokenOptimization"]
+    schema = TelosSchema.model_validate(d)
+    out = TelosCompiler.compile(schema, {})
+    assert out is not None
+    assert abs(out["x"] - 0.5) < 1e-5
+
+
 def test_compiler_simple() -> None:
     schema = TelosSchema.model_validate(
         {

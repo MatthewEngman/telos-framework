@@ -37,6 +37,10 @@ Tests avoid the network, Docker, and Kubernetes. They cover the PuLP compiler, Y
 - Run `pytest` before opening a PR.
 - If you change CLI behavior or public APIs, update `README.md` and/or `docs/SDK.md` as needed.
 
+## Curated templates (`templates/`)
+
+Approved submissions land as `telos-framework/templates/*.telos`. Optional YAML `template:` metadata is described in `telos.models.TelosTemplate`. After merge, **Templates catalog** (`.github/workflows/templates-catalog.yml`) refreshes `templates/index.json` for static hub consumers. If `main` is branch-protected against direct pushes, configure a PAT or regenerate the index locally before merge (see `templates/README.md`).
+
 ## Security
 
 MILP expressions use **`telos.linear_milp`**; memory updates use **`telos.memory_expr`**. Do not point untrusted `.telos` or WebSocket payloads at production without policy controls. See [../SECURITY.md](../SECURITY.md) (repository root).

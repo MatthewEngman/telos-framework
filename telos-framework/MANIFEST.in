@@ -6,4 +6,5 @@ include docs/START_HERE.md
 include docs/SDK.md
 include docs/ACTUATORS.md
 graft examples
+graft templates
 graft tests

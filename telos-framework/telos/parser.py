@@ -18,7 +18,8 @@ class TelosParser:
     def load(filepath: PathLike) -> Dict[str, Any]:
         """
         Read a `.telos` YAML file, validate as `TelosSchema`, return a dict
-        suitable for `TelosRuntime.tick`.
+        suitable for `TelosRuntime.tick`. Optional root key ``template`` holds
+        catalog metadata (see ``TelosTemplate``); the compiler ignores it.
         """
         path = Path(filepath)
         if not path.is_file():

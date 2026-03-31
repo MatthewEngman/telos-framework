@@ -26,7 +26,7 @@ Treat manifests and canvas JSON as **trusted configuration**; see [../../SECURIT
 | Module | Role |
 |--------|------|
 | `telos/models.py` | `TelosSchema`, `Variable`, `Memory`, etc. |
-| `telos/compiler.py` | PuLP `TelosCompiler.compile(schema, context)` |
+| `telos/compiler.py` | PuLP `TelosCompiler.compile(schema, context, *, solver=None)`, plus `resolve_milp_solver_name` / `build_milp_solver` |
 | `telos/expr_limits.py` | Internal caps (e.g. max parenthesis nesting depth) |
 | `telos/linear_milp.py` | Safe linear expression parser for objectives / invariants |
 | `telos/memory_expr.py` | Safe scalar evaluator for memory `update` strings |
@@ -52,6 +52,13 @@ Treat manifests and canvas JSON as **trusted configuration**; see [../../SECURIT
 | `telos/experimental/tir.py` | Re-exports TIR + `TelosAgent` + SciPy `TelosCompiler` (namespaced) |
 
 There are two compilers by design: **`telos.compiler.TelosCompiler`** (MILP, canonical) and **`telos.tir_compiler.TelosCompiler`** (TIR/SciPy, experimental).
+
+### MILP solver backend (CBC vs HiGHS)
+
+- **`TelosCompiler.compile(..., solver=None)`** — optional **`solver`**: `"auto"`, `"cbc"`, or `"highs"`; when omitted, **`TELOS_PULP_SOLVER`** is read (default **`auto`**). **`auto`** on **Darwin arm64** prefers **HiGHS** if `highspy` is available; otherwise a **`RuntimeError`** explains how to install **`telos-os[milp-highs]`** or **`pip install highspy`**.
+- **`resolve_milp_solver_name(explicit=None)`** / **`build_milp_solver(name)`** — resolve the solver string and construct the PuLP solver instance (used by the compiler and tests).
+
+CLI: **`telos validate --solver …`** and **`telos run --solver …`** set **`TELOS_PULP_SOLVER`** for that process.
 
 ## Public imports
 
@@ -89,9 +96,10 @@ from telos.compiler import TelosCompiler as MilpCompiler
 
 ```bash
 telos validate manifest.telos
+telos validate manifest.telos --strict --solver highs
 ```
 
-Exit **0** if YAML parses and `TelosSchema` validates; **1** on failure. With **`--strict`**, also run one solve: **1** on compile/parse error, **4** if the probe context is infeasible or not optimal.
+Exit **0** if YAML parses and `TelosSchema` validates; **1** on failure. With **`--strict`**, also run one solve: **1** on compile/parse error, **4** if the probe context is infeasible or not optimal. **`--solver`** — `auto`, `cbc`, or `highs` (sets **`TELOS_PULP_SOLVER`**; same flag exists on **`telos run`**).
 
 ## `.telos` manifests (YAML)
 
@@ -141,4 +149,4 @@ Needs `docker` extra and a running daemon. Labeled `telos_framework=true`, `node
 
 ## Publishing / layout
 
-PyPI **`telos-os`** (`pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[all]`.
+PyPI **`telos-os`** (`pyproject.toml`). Extras: `[docker]`, `[kubernetes]`, `[server]`, `[milp-highs]` (`highspy`, recommended on **Apple Silicon** for MILP), `[all]`.

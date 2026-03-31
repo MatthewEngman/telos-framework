@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/MatthewEngman/telos-framework/actions/workflows/ci.yml)
 
-**Telos OS** is a Python framework for **declarative optimization runtimes**: **`.telos` YAML manifests**, **MILP** solving with PuLP/CBC, a temporal **`TelosRuntime`** (memory, chained matrices), and optional **actuators**. *Infrastructure-as-Physics* is a **tagline** for describing goals and constraints as math—not a second product line.
+**Telos OS** is a Python framework for **declarative optimization runtimes**: **`.telos` YAML manifests**, **MILP** solving with **PuLP** (CBC or HiGHS), a temporal **`TelosRuntime`** (memory, chained matrices), and optional **actuators**. *Infrastructure-as-Physics* is a **tagline** for describing goals and constraints as math—not a second product line.
 
 **New here?** **[docs/START_HERE.md](docs/START_HERE.md)** — glossary, `telos validate` / `telos run` / `telos test`, how to read a manifest.
 
@@ -24,7 +24,7 @@
 |--------|--------|------|
 | **Manifests** | `telos/parser.py` | `TelosParser.load` / `loads` — YAML → validated dict |
 | **MILP schema** | `telos/models.py` | `TelosSchema`, `Variable`, `Memory`, etc. |
-| **MILP compiler** | `telos/compiler.py` | PuLP `TelosCompiler.compile` |
+| **MILP compiler** | `telos/compiler.py` | PuLP `TelosCompiler.compile` (CBC / HiGHS; see **MILP solver** below) |
 | **Linear expressions** | `telos/linear_milp.py` | Safe parser for objectives / invariants |
 | **Memory expressions** | `telos/memory_expr.py` | Safe scalar `update` evaluator (`max`/`min`) |
 | **Runtime** | `telos/runtime.py` | `TelosRuntime.tick` — memory, router→hardware order, actuators |
@@ -100,7 +100,7 @@ python -m pip install -e ".[all]"   # + docker, k8s, server
 python -m pip install -e .
 ```
 
-**PyPI:** `pip install telos-os` — extras `[docker]`, `[kubernetes]`, `[server]`, `[all]`.
+**PyPI:** `pip install telos-os` — extras `[docker]`, `[kubernetes]`, `[server]`, `[milp-highs]` (HiGHS / `highspy` for native ARM64 solves), `[all]`.
 
 **Legacy:** `python -m pip install -r requirements.txt`
 
@@ -115,6 +115,12 @@ telos validate examples/router_minimal.telos
 telos run examples/router_minimal.telos --actuator none --params examples/params/router_minimal.json
 telos test vulnerable.telos --iters 500
 ```
+
+**MILP backend:** `telos validate` and `telos run` accept **`--solver {auto,cbc,highs}`** (sets `TELOS_PULP_SOLVER` for that process). On **Apple Silicon (arm64)**, the default **`auto`** uses **HiGHS** when `highspy` is installed (recommended: `pip install "telos-os[milp-highs]"`); otherwise install that extra or pass **`--solver cbc`** only if your Python runs under Rosetta (x86_64).
+
+| Variable | Purpose |
+|----------|---------|
+| `TELOS_PULP_SOLVER` | `auto` (default), `cbc`, or `highs` — selects the PuLP MILP backend (see [docs/SDK.md](docs/SDK.md)). |
 
 Optional LLM draft (review output before running):
 
@@ -226,7 +232,7 @@ Expressions must be valid for SymPy (`sympify`). **`eq`** → == 0, **`ineq`** �
 
 ## Limitations
 
-- **MILP:** CBC via PuLP; linear expression parser for manifest strings.
+- **MILP:** PuLP with **CBC** (default on most platforms) or **HiGHS** (via `highspy`, used automatically on Darwin arm64 when available); linear expression parser for manifest strings.
 - **TIR:** continuous `SLSQP` only; experimental / demo-oriented.
 - Executable “matrix” is a **dict of numbers**, not a binary tensor format.
 

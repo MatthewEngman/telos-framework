@@ -1,0 +1,42 @@
+# OpenClaw / agent token spend — MILP knobs vs cost + latency (catalog template)
+template:
+  name: OpenClaw token optimization
+  category: ai-ml
+  author: "@MatthewEngman"
+  description: Optimize token spend for OpenClaw agents
+  actuators:
+    - OpenClawTokenOptimization
+ontology:
+  variables:
+    - name: concurrency_limit
+      type: int
+      bounds: [1, 50]
+    - name: max_retries
+      type: int
+      bounds: [0, 5]
+    - name: context_window_usage
+      type: float
+      bounds: [0.2, 1.0]
+    - name: sampling_temperature
+      type: float
+      bounds: [0.0, 1.0]
+  parameters:
+    - input_token_cost
+    - output_token_cost
+    - avg_input_length
+    - avg_output_length
+    - latency_penalty_weight
+    - accuracy_threshold
+teleology:
+  direction: minimize
+  objective: >-
+    input_token_cost * avg_input_length * context_window_usage +
+    output_token_cost * avg_output_length * (1 + max_retries) +
+    latency_penalty_weight * concurrency_limit
+invariants:
+  - type: ineq
+    expression: 0.8 - sampling_temperature
+  - type: ineq
+    expression: avg_input_length * context_window_usage - 1024
+  - type: ineq
+    expression: max_retries + context_window_usage * 5 - 3

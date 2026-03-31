@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -44,6 +45,8 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    if getattr(args, "solver", None) is not None:
+        os.environ["TELOS_PULP_SOLVER"] = args.solver
     path = Path(args.file)
     try:
         schema = TelosParser.load(path)
@@ -103,6 +106,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
+    if getattr(args, "solver", None) is not None:
+        os.environ["TELOS_PULP_SOLVER"] = args.solver
     path = Path(args.file)
     try:
         raw = path.read_text(encoding="utf-8")
@@ -177,7 +182,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="telos",
         description=(
-            "Telos OS — declarative MILP runtimes: load `.telos` manifests, solve with PuLP/CBC, "
+            "Telos OS — declarative MILP runtimes: load `.telos` manifests, solve with PuLP (CBC or HiGHS), "
             "optional actuators. MILP expressions use a safe linear parser; memory updates use a "
             "separate scalar evaluator (see README / SECURITY.md)."
         ),
@@ -225,6 +230,13 @@ def main() -> None:
         action="store_true",
         help="Shortcut for --actuator none",
     )
+    run_p.add_argument(
+        "--solver",
+        type=str,
+        choices=("auto", "cbc", "highs"),
+        default=None,
+        help="MILP backend (default: env TELOS_PULP_SOLVER or auto)",
+    )
     run_p.set_defaults(func=_cmd_run)
 
     val_p = sub.add_parser(
@@ -242,6 +254,13 @@ def main() -> None:
         type=str,
         default="",
         help="JSON floats for ontology.parameters (strict mode; default: heuristic probe values)",
+    )
+    val_p.add_argument(
+        "--solver",
+        type=str,
+        choices=("auto", "cbc", "highs"),
+        default=None,
+        help="MILP backend (default: env TELOS_PULP_SOLVER or auto)",
     )
     val_p.set_defaults(func=_cmd_validate)
 

@@ -1,9 +1,22 @@
 {
   "schema": "telos-templates-index/v1",
-  "generated_at": "2026-03-24T23:28:24Z",
+  "generated_at": "2026-03-31T19:47:42Z",
   "source": {
-    "repository": "MatthewEngman/telos-framework",
-    "commit": "1d82bd28962393fa51598d13bbcc69e6ec197145"
+    "repository": null,
+    "commit": null
   },
-  "templates": []
+  "templates": [
+    {
+      "id": "open_claw_token_optimization",
+      "file": "templates/open_claw_token_optimization.telos",
+      "sha256": "f0124f7ec77d9469a7bff4c738dc6bc580a7008601fdf85ad92cb82c98660ab5",
+      "name": "OpenClaw token optimization",
+      "category": "ai-ml",
+      "author": "@MatthewEngman",
+      "description": "Optimize token spend for OpenClaw agents",
+      "actuators": [
+        "OpenClawTokenOptimization"
+      ]
+    }
+  ]
 }

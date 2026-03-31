@@ -2,12 +2,61 @@
 
 from __future__ import annotations
 
+import os
+import platform
 from typing import Any, Dict, Optional
 
 import pulp
 
 from .linear_milp import LinearMilpExpressionError, parse_linear_milp_expression
 from .models import TelosSchema
+
+_ARM64_DARWIN_HELP = (
+    "Apple Silicon (arm64) macOS needs a native MILP backend: the PuLP CBC bundle is x86-only. "
+    'Install HiGHS for Python: pip install highspy   (or pip install "telos-os[milp-highs]"). '
+    "Override with TELOS_PULP_SOLVER=cbc if you use an x86_64 Python under Rosetta."
+)
+
+
+def resolve_milp_solver_name(explicit: Optional[str] = None) -> str:
+    """
+    Choose ``cbc`` or ``highs`` for ``TelosCompiler``.
+
+    * ``explicit`` — when set, overrides the ``TELOS_PULP_SOLVER`` environment variable.
+    * ``TELOS_PULP_SOLVER`` — ``auto`` (default), ``cbc``, or ``highs``.
+    * ``auto`` on Darwin + arm64 prefers HiGHS when ``highspy`` is available; otherwise raises
+      with install instructions. Other platforms default to CBC.
+    """
+    raw = (
+        (explicit.strip().lower() if explicit is not None else None)
+        or os.environ.get("TELOS_PULP_SOLVER", "auto").strip().lower()
+    )
+    if raw == "highs":
+        return "highs"
+    if raw == "cbc":
+        return "cbc"
+    if raw not in ("", "auto"):
+        raise ValueError(
+            f"Invalid MILP solver {raw!r}; use auto, cbc, or highs "
+            "(or set TELOS_PULP_SOLVER)."
+        )
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        if pulp.HiGHS(msg=False).available():
+            return "highs"
+        raise RuntimeError(_ARM64_DARWIN_HELP)
+    return "cbc"
+
+
+def build_milp_solver(name: str) -> pulp.LpSolver:
+    if name == "cbc":
+        return pulp.PULP_CBC_CMD(msg=False)
+    sol = pulp.HiGHS(msg=False)
+    if not sol.available():
+        raise RuntimeError(
+            "HiGHS was selected but highspy is not installed. "
+            'Install: pip install highspy   (or pip install "telos-os[milp-highs]").'
+        )
+    return sol
 
 
 def _as_pulp_affine(expr: Any) -> pulp.LpAffineExpression:
@@ -21,6 +70,8 @@ class TelosCompiler:
     def compile(
         schema: TelosSchema,
         context: Optional[Dict[str, Any]] = None,
+        *,
+        solver: Optional[str] = None,
     ) -> Optional[Dict[str, float]]:
         context = dict(context or {})
         direction = (
@@ -61,7 +112,14 @@ class TelosCompiler:
             else:
                 prob += lhs >= 0
 
-        prob.solve(pulp.PULP_CBC_CMD(msg=False))
+        backend = resolve_milp_solver_name(solver)
+        pulp_solver = build_milp_solver(backend)
+        try:
+            prob.solve(pulp_solver)
+        except OSError as exc:
+            if getattr(exc, "errno", None) == 86 and platform.system() == "Darwin":
+                raise RuntimeError(_ARM64_DARWIN_HELP) from exc
+            raise
         if pulp.LpStatus[prob.status] != "Optimal":
             return None
 

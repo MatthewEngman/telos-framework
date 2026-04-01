@@ -39,7 +39,7 @@ Tests avoid the network, Docker, and Kubernetes. They cover the PuLP compiler, Y
 
 ## Curated templates (`templates/`)
 
-Approved submissions land as `telos-framework/templates/*.telos`. Optional YAML `template:` metadata is described in `telos.models.TelosTemplate`. After merge, **Templates catalog** (`.github/workflows/templates-catalog.yml`) refreshes `templates/index.json` for static hub consumers. If `main` is branch-protected against direct pushes, configure a PAT or regenerate the index locally before merge (see `templates/README.md`).
+Approved submissions land as `telos-framework/templates/*.telos`. Optional YAML `template:` metadata is described in `telos.models.TelosTemplate`. **Templates catalog** (`.github/workflows/templates-catalog.yml`) checks that committed `templates/index.json` matches `python scripts/generate_templates_index.py` (so static hub consumers always get a consistent index). **Regenerate the index locally and commit it in the same PR** as new or changed `.telos` files (see `templates/README.md`).
 
 ## Security
 

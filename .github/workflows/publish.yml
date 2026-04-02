@@ -6,6 +6,7 @@
 #      repo: MatthewEngman/telos-framework, workflow file: publish.yml (this file).
 #      If using a GitHub Environment: set the same name in PyPI (Trusted Publisher) and in `environment:` below.
 #   3. Bump version in telos-framework/pyproject.toml (and telos/__init__.py if you keep them in sync).
+#      PyPI rejects re-uploading an existing version (HTTP 400); each release needs a new version number.
 #   4. Run this workflow from the Actions tab.
 #
 # Alternative: set repository secret PYPI_API_TOKEN and uncomment the `with: password:` block below

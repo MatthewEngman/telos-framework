@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telos-os"
-version = "1.3.0"
+version = "1.3.1"
 description = "Declarative MILP runtimes: .telos manifests, safe linear/memory expression parsers, PuLP (CBC/HiGHS), actuators"
 readme = "README.md"
 requires-python = ">=3.10"

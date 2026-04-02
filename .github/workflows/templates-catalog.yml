@@ -1,4 +1,5 @@
-# Regenerate telos-framework/templates/index.json when curated .telos files change.
+# Ensure telos-framework/templates/index.json matches generate_templates_index.py output.
+# (Direct pushes to main by GITHUB_TOKEN are blocked when rules require PRs — verify instead.)
 # For Lovable / static hub: fetch raw JSON from main (e.g. GitHub raw URL).
 
 name: Templates catalog
@@ -9,9 +10,16 @@ on:
     paths:
       - "telos-framework/templates/**/*.telos"
       - "telos-framework/scripts/generate_templates_index.py"
+      - "telos-framework/templates/index.json"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "telos-framework/templates/**/*.telos"
+      - "telos-framework/scripts/generate_templates_index.py"
+      - "telos-framework/templates/index.json"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: templates-catalog-${{ github.ref }}
@@ -34,21 +42,17 @@ jobs:
         working-directory: telos-framework
         run: python -m pip install -U pip && python -m pip install -e ".[dev]"
 
-      - name: Regenerate templates index
+      - name: Verify templates/index.json is current
         working-directory: telos-framework
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python scripts/generate_templates_index.py
-
-      - name: Commit and push if changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add telos-framework/templates/index.json
-          if git diff --staged --quiet; then
-            echo "No index changes."
-          else
-            git commit -m "chore(templates): regenerate templates/index.json"
-            git push
+          set -euo pipefail
+          python scripts/generate_templates_index.py --dry-run > /tmp/templates-index-expected.json
+          if ! diff -q templates/index.json /tmp/templates-index-expected.json; then
+            echo "::error::telos-framework/templates/index.json is out of date. From repo root: cd telos-framework && python scripts/generate_templates_index.py — then commit the result in the same PR as template changes."
+            diff -u templates/index.json /tmp/templates-index-expected.json || true
+            exit 1
           fi
+          echo "Templates index matches generator output."
